@@ -18,6 +18,8 @@ file:
 dynflare -config my-config.toml
 ```
 
+See `example.config.toml` for a commented example.
+
 When everything works, you can install and enable a systemd timer to `~/.local/share/systemd/user`
 using the following series of commands:
 
