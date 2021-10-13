@@ -1,0 +1,13 @@
+*
+!*/
+
+!.gitignore
+!README.md
+!LICENSE
+
+!go.mod
+!go.sum
+
+!*.go
+!*.service
+!*.timer

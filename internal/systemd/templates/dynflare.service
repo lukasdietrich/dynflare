@@ -1,0 +1,8 @@
+[Unit]
+Description=Update DNS at Cloudflare
+Wants=network.target local-fs.target
+After=network.target local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart="{{ .Executable }}" -config "{{ .Config }}"

@@ -1,0 +1,10 @@
+[Unit]
+Description=Dynamic DNS Update Timer
+After=network.target local-fs.target
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=1m
+
+[Install]
+WantedBy=timers.target
