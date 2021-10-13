@@ -11,3 +11,4 @@
 !*.go
 !*.service
 !*.timer
+!example.*
