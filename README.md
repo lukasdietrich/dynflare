@@ -5,7 +5,7 @@
 ## How it works
 
 The current ips are determined by asking the os.
-Only non-loopback unicast addresses are considered and optionally filtered by a suffix.
+Only global unicast addresses are considered and optionally filtered by a suffix.
 The last determined ip is cached at `~/.cache/dynflare/{domain}.{kind}.txt` and compared to the
 current ip before doing any api calls to Cloudflare.
 

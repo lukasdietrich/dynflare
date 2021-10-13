@@ -17,7 +17,7 @@ func filterMatchingIPs(domain config.Domain, ipNetSlice []*net.IPNet) []net.IP {
 	for _, ipNet := range ipNetSlice {
 		ip, mask := normalize(ipNet.IP), ipNet.Mask
 
-		if isValidType(domain, ip) && isValidSuffix(suffix, ip, mask) {
+		if ip.IsGlobalUnicast() && isValidType(domain, ip) && isValidSuffix(suffix, ip, mask) {
 			matchingIPSlice = append(matchingIPSlice, ip)
 		}
 	}
