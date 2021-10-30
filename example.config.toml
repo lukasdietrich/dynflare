@@ -1,20 +1,21 @@
-[cloudflare]
+[[nameserver]]
+  provider = "cloudflare"
   # Profile > API Tokens > Create Token
   # The token must have the permission to edit the required zone(s), but nothing else.
   # Do not use the Global API Key!
-  token = "secret token"
+  credentials = "secret token"
+  # List of zones this nameserver is responsible for.
+  zones = ["example.com"]
 
 [[domain]]
-  # Zone of the domain. Usually the "base" domain.
-  zone = "example.com"
   # The domain record to update.
   name = "raspberry-pi.example.com"
-  # What network interface to search for an ip on.
-  # See `ip a`.
-  interface = "eth0"
   #    A for IPv4
   # AAAA for IPv6
   kind = "AAAA"
+  # What network interface to search for an ip on.
+  # See `ip address`.
+  interface = "eth0"
   # Suffix is optional and used to filter ip candidates based on suffix.
   # The "suffix" is parsed as a full ip but matched by the inversed subnet mask.
   # This is basically the part after the network prefix assigned by the isp.

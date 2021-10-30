@@ -6,28 +6,9 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-type DomainKind string
-
-const (
-	KindIPv4 = DomainKind("A")
-	KindIPv6 = DomainKind("AAAA")
-)
-
-type Cloudflare struct {
-	Token string `toml:"token"`
-}
-
-type Domain struct {
-	Zone      string     `toml:"zone"`
-	Name      string     `toml:"name"`
-	Interface string     `toml:"interface"`
-	Kind      DomainKind `toml:"kind"`
-	Suffix    string     `toml:"suffix"`
-}
-
 type Config struct {
-	Cloudflare Cloudflare `toml:"cloudflare"`
-	Domains    []Domain   `toml:"domain"`
+	Nameservers []Nameserver `toml:"nameserver"`
+	Domains     []Domain     `toml:"domain"`
 }
 
 func Parse(filename string) (config Config, err error) {

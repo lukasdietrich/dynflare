@@ -1,138 +1,87 @@
 package dyndns
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"time"
 
-	"github.com/cloudflare/cloudflare-go"
-
+	"github.com/lukasdietrich/dynflare/internal/cache"
 	"github.com/lukasdietrich/dynflare/internal/config"
-	"github.com/lukasdietrich/dynflare/internal/resolve"
+	"github.com/lukasdietrich/dynflare/internal/monitor"
+	"github.com/lukasdietrich/dynflare/internal/nameserver"
 )
 
-type updater struct {
-	client  *cloudflare.API
-	records map[string][]cloudflare.DNSRecord
-	zones   map[string]string
-	cache   *cache
+type Updater struct {
+	cache       *cache.Cache
+	domainSlice []*domainUpdater
 }
 
-func newUpdater(token string) (*updater, error) {
-	client, err := cloudflare.NewWithAPIToken(token)
+func NewUpdater(config config.Config, cache *cache.Cache) (*Updater, error) {
+	nameserverMap, err := newNameservers(config)
 	if err != nil {
-		return nil, fmt.Errorf("could not create cloudflare client: %w", err)
+		return nil, err
 	}
 
-	cache, err := newCache()
-	if err != nil {
-		return nil, fmt.Errorf("could not open cache: %w", err)
-	}
-
-	return &updater{
-		client:  client,
-		records: make(map[string][]cloudflare.DNSRecord),
-		zones:   make(map[string]string),
-		cache:   cache,
+	return &Updater{
+		cache:       cache,
+		domainSlice: newDomainUpdaters(config, nameserverMap),
 	}, nil
 }
 
-func (u *updater) fetchDNSRecord(domain config.Domain) (*cloudflare.DNSRecord, error) {
-	if u.records[domain.Zone] == nil {
-		zoneId, err := u.client.ZoneIDByName(domain.Zone)
-		if err != nil {
-			return nil, err
-		}
+func (u *Updater) Update(updates <-chan *monitor.State) error {
+	for state := range updates {
+		log.Print("network configuration changed")
 
-		records, err := u.client.DNSRecords(context.Background(), zoneId, cloudflare.DNSRecord{})
-		if err != nil {
-			return nil, err
-		}
-
-		u.zones[domain.Zone] = zoneId
-		u.records[domain.Zone] = records
-	}
-
-	for _, record := range u.records[domain.Zone] {
-		if record.Name == domain.Name && config.DomainKind(record.Type) == domain.Kind {
-			return &record, nil
-		}
-	}
-
-	return nil, nil
-}
-
-func (u *updater) updateDNSRecord(domain config.Domain, addr string) error {
-	log.Printf("updating %s %s -> %s", domain.Name, domain.Kind, addr)
-
-	record, err := u.fetchDNSRecord(domain)
-	if err != nil {
-		return err
-	}
-
-	defer u.cache.write(domain, addr)
-
-	now := time.Now()
-
-	if record != nil {
-		r := *record
-		r.ModifiedOn = now
-		r.Content = addr
-
-		log.Printf("updating existing record zoneName=%s, zoneId=%s, recordId=%s",
-			r.ZoneName, r.ZoneID, r.ID)
-
-		return u.client.UpdateDNSRecord(context.Background(), r.ZoneID, r.ID, r)
-	} else {
-		r := cloudflare.DNSRecord{
-			Type:       string(domain.Kind),
-			Name:       domain.Name,
-			Content:    addr,
-			CreatedOn:  now,
-			ModifiedOn: now,
-			ZoneID:     u.zones[domain.Zone],
-			ZoneName:   domain.Zone,
-		}
-
-		log.Printf("creating new record zoneName=%s, zoneId=%s", r.ZoneName, r.ZoneID)
-
-		_, err := u.client.CreateDNSRecord(context.Background(), r.ZoneID, r)
-		return err
-	}
-}
-
-func (u *updater) lastAddr(domain config.Domain) (string, error) {
-	return u.cache.read(domain)
-}
-
-func (u *updater) currentAddr(domain config.Domain) (string, error) {
-	ip, err := resolve.Resolve(domain)
-	return ip.String(), err
-}
-
-func Update(cfg config.Config) error {
-	updater, err := newUpdater(cfg.Cloudflare.Token)
-	if err != nil {
-		return fmt.Errorf("could not create updater: %w", err)
-	}
-
-	for _, domain := range cfg.Domains {
-		lastAddr, err := updater.lastAddr(domain)
-		if err != nil {
+		addrSlice := state.AddrSlice()
+		if err := u.updateDomains(addrSlice); err != nil {
 			return err
 		}
-
-		currentAddr, err := updater.currentAddr(domain)
-		if err != nil {
-			return err
-		}
-
-		if lastAddr != currentAddr {
-			updater.updateDNSRecord(domain, currentAddr)
-		}
-
 	}
 
 	return nil
+}
+
+func (u *Updater) updateDomains(addrSlice []monitor.Addr) error {
+	defer u.cache.PersistIfDirty()
+
+	for _, domain := range u.domainSlice {
+		if err := domain.update(u.cache, addrSlice); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func newNameservers(cfg config.Config) (map[string]nameserver.Nameserver, error) {
+	nameserverMap := make(map[string]nameserver.Nameserver)
+	for _, c := range cfg.Nameservers {
+		server, err := nameserver.New(c)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, zone := range c.Zones {
+			if _, ok := nameserverMap[zone]; ok {
+				return nil, fmt.Errorf("zone %q is defined multiple times", zone)
+			}
+
+			nameserverMap[zone] = server
+		}
+	}
+
+	return nameserverMap, nil
+}
+
+func newDomainUpdaters(cfg config.Config, nameserverMap map[string]nameserver.Nameserver) []*domainUpdater {
+	domainSlice := make([]*domainUpdater, len(cfg.Domains))
+	for i, c := range cfg.Domains {
+		domainSlice[i] = &domainUpdater{
+			nameserver: nameserverMap[c.Zone],
+			filter:     newFilter(c),
+			zoneName:   c.Zone,
+			domainName: c.Name,
+		}
+	}
+
+	return domainSlice
 }
