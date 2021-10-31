@@ -1,9 +1,10 @@
 package dyndns
 
 import (
-	"log"
 	"net/url"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/lukasdietrich/dynflare/internal/cache"
 	"github.com/lukasdietrich/dynflare/internal/monitor"
@@ -19,14 +20,24 @@ type domainUpdater struct {
 
 func (d *domainUpdater) update(cache *cache.Cache, addrSlice []monitor.Addr) error {
 	addr := d.filterCandidate(addrSlice)
-	if addr != nil && d.checkCache(cache, addr) {
-		log.Printf("candidate differs from cache. updating record for %q", d.domainName)
+	if addr != nil {
+		if d.checkCache(cache, addr) {
+			log.Debug().
+				Str("domain", d.domainName).
+				Stringer("ip", addr.IP).
+				Msg("candidate differs from cache. updating record.")
 
-		if err := d.updateRecord(addr); err != nil {
-			return err
+			if err := d.updateRecord(addr); err != nil {
+				return err
+			}
+
+			d.updateCache(cache, addr)
+		} else {
+			log.Debug().
+				Str("domain", d.domainName).
+				Stringer("ip", addr.IP).
+				Msg("candidate matches cache. skip update.")
 		}
-
-		d.updateCache(cache, addr)
 	}
 
 	return nil
@@ -35,7 +46,11 @@ func (d *domainUpdater) update(cache *cache.Cache, addrSlice []monitor.Addr) err
 func (d *domainUpdater) filterCandidate(addrSlice []monitor.Addr) *monitor.Addr {
 	for _, addr := range addrSlice {
 		if d.filter.match(addr) {
-			log.Printf("found an ip canditate for %q: %q", d.domainName, addr.IP)
+			log.Debug().
+				Str("domain", d.domainName).
+				Stringer("ip", addr.IP).
+				Msg("found an ip candidate")
+
 			return &addr
 		}
 	}

@@ -3,7 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	"os"
+	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/lukasdietrich/dynflare/internal/cache"
 	"github.com/lukasdietrich/dynflare/internal/config"
@@ -11,9 +15,13 @@ import (
 	"github.com/lukasdietrich/dynflare/internal/monitor"
 )
 
+func init() {
+	log.Logger = zerolog.New(os.Stderr).With().Timestamp().Caller().Logger()
+}
+
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("an error occurred: %v", err)
+		log.Fatal().Err(err).Msg("an fatal error occurred. stopping dynflare.")
 	}
 }
 
@@ -21,11 +29,17 @@ func run() error {
 	var (
 		configFilename string
 		cacheFilename  string
+		logLevel       string
 	)
 
 	flag.StringVar(&configFilename, "config", "config.toml", "Path to config.toml")
 	flag.StringVar(&cacheFilename, "cache", "cache.toml", "Path to cache.toml")
+	flag.StringVar(&logLevel, "log", "debug", "Set the log level (debug, info, warn, error)")
 	flag.Parse()
+
+	if err := setLogLevel(logLevel); err != nil {
+		return fmt.Errorf("could not set log level to %q: %w", logLevel, err)
+	}
 
 	config, err := config.Parse(configFilename)
 	if err != nil {
@@ -38,6 +52,16 @@ func run() error {
 	}
 
 	return update(config, cache)
+}
+
+func setLogLevel(logLevel string) error {
+	level, err := zerolog.ParseLevel(strings.ToLower(logLevel))
+	if err != nil {
+		return err
+	}
+
+	zerolog.SetGlobalLevel(level)
+	return nil
 }
 
 func update(config config.Config, cache *cache.Cache) error {

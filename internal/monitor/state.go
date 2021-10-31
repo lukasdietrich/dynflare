@@ -1,9 +1,9 @@
 package monitor
 
 import (
-	"log"
 	"net"
 
+	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
 )
 
@@ -49,41 +49,71 @@ func (s *State) AddrSlice() []Addr {
 	return addrSlice
 }
 
-func (s *State) updateLink(update netlink.LinkUpdate) {
+func (s *State) updateLink(update netlink.LinkUpdate) bool {
 	attr := update.Link.Attrs()
 	link := linkState{Index: attr.Index, Name: attr.Name}
 
-	log.Printf("link update: %q", link.Name)
-	s.linkMap[link.Index] = link
+	log.Debug().Str("link", link.Name).Msg("link update event")
+
+	oldValue, exists := s.linkMap[link.Index]
+	if !exists || oldValue != link {
+		s.linkMap[link.Index] = link
+		return true
+	} else {
+		log.Debug().Str("link", link.Name).Msg("link did not change")
+		return false
+	}
 }
 
-func (s *State) updateAddr(update netlink.AddrUpdate) {
+func (s *State) updateAddr(update netlink.AddrUpdate) bool {
 	ipStr := update.LinkAddress.String()
 	addr := addrState{
 		IPNet:     update.LinkAddress,
 		LinkIndex: update.LinkIndex,
 	}
 
+	oldValue, exists := s.addrMap[ipStr]
+
 	if update.NewAddr {
-		log.Printf("add addr: %q", ipStr)
-		s.addrMap[ipStr] = addr
+		log.Debug().Str("ip", ipStr).Msg("add address event")
+
+		if !exists || oldValue.LinkIndex != addr.LinkIndex || !oldValue.IP.Equal(addr.IP) {
+			s.addrMap[ipStr] = addr
+			return true
+		} else {
+			log.Debug().Str("ip", ipStr).Msg("address did not change. skip update")
+		}
 	} else {
-		log.Printf("delete addr: %q", ipStr)
-		delete(s.addrMap, ipStr)
+		log.Debug().Str("ip", ipStr).Msg("delete address event")
+
+		if exists {
+			delete(s.addrMap, ipStr)
+			return true
+		} else {
+			log.Debug().Str("ip", ipStr).Msg("address was not in state. skip delete.")
+		}
 	}
+
+	return false
 }
 
 func (s *State) handleUpdates(lu <-chan netlink.LinkUpdate, au <-chan netlink.AddrUpdate, su chan<- *State) {
-	for {
-		su <- s
+	su <- s
 
+	for {
 		select {
 		case l := <-lu:
-			s.updateLink(l)
+			if !s.updateLink(l) {
+				continue
+			}
 
 		case a := <-au:
-			s.updateAddr(a)
+			if !s.updateAddr(a) {
+				continue
+			}
 		}
+
+		su <- s
 	}
 }
 

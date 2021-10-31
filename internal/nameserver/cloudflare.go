@@ -3,10 +3,10 @@ package nameserver
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/cloudflare/cloudflare-go"
+	"github.com/rs/zerolog/log"
 )
 
 type cloudflareNameserver struct {
@@ -81,10 +81,17 @@ func (c *cloudflareNameserver) UpdateRecord(record Record) error {
 		newRecord.Content = record.IP.String()
 
 		if dnsRecord.Content != newRecord.Content {
-			log.Printf("updating record %q to %q", newRecord.ID, newRecord.Content)
+			log.Debug().
+				Str("id", newRecord.ID).
+				Str("content", newRecord.Content).
+				Msg("updating record")
+
 			return c.client.UpdateDNSRecord(context.Background(), zoneId, newRecord.ID, newRecord)
 		} else {
-			log.Printf("record %q already set to %q", newRecord.ID, newRecord.Content)
+			log.Debug().
+				Str("id", newRecord.ID).
+				Str("content", newRecord.Content).
+				Msg("record already up to date")
 		}
 
 		return nil
@@ -96,8 +103,11 @@ func (c *cloudflareNameserver) UpdateRecord(record Record) error {
 		Content: record.IP.String(),
 	}
 
-	log.Printf("creating record for domain=%q, type=%q, content=%q",
-		newRecord.Name, newRecord.Type, newRecord.Content)
+	log.Debug().
+		Str("domain", newRecord.Name).
+		Str("type", newRecord.Type).
+		Str("content", newRecord.Content).
+		Msg("creating new record")
 
 	_, err = c.client.CreateDNSRecord(context.Background(), zoneId, newRecord)
 	return err

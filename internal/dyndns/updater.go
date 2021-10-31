@@ -2,7 +2,8 @@ package dyndns
 
 import (
 	"fmt"
-	"log"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/lukasdietrich/dynflare/internal/cache"
 	"github.com/lukasdietrich/dynflare/internal/config"
@@ -29,9 +30,10 @@ func NewUpdater(config config.Config, cache *cache.Cache) (*Updater, error) {
 
 func (u *Updater) Update(updates <-chan *monitor.State) error {
 	for state := range updates {
-		log.Print("network configuration changed")
+		log.Debug().Msg("network configuration changed")
 
 		addrSlice := state.AddrSlice()
+
 		if err := u.updateDomains(addrSlice); err != nil {
 			return err
 		}

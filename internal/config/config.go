@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
+	"github.com/rs/zerolog/log"
 )
 
 type Config struct {
@@ -12,6 +13,8 @@ type Config struct {
 }
 
 func Parse(filename string) (config Config, err error) {
+	log.Debug().Str("filename", filename).Msg("parsing config")
+
 	meta, err := toml.DecodeFile(filename, &config)
 	if err != nil {
 		return
