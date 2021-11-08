@@ -1,6 +1,7 @@
 *
 !*/
 
+!.github/**/*.yml
 !.gitignore
 !.dockerignore
 !README.md
