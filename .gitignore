@@ -2,13 +2,13 @@
 !*/
 
 !.gitignore
+!.dockerignore
 !README.md
 !LICENSE
 
 !go.mod
 !go.sum
-
 !*.go
-!*.service
-!*.timer
-!example.*
+
+!Dockerfile
+!docker-compose.yml
