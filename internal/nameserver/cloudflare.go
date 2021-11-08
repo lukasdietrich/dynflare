@@ -2,6 +2,7 @@ package nameserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -66,6 +67,19 @@ func (c *cloudflareNameserver) lookupRecord(zoneId, domainName string, kind Reco
 }
 
 func (c *cloudflareNameserver) UpdateRecord(record Record) error {
+	err := c.updateRecord(record)
+
+	if err != nil {
+		var apiError *cloudflare.APIRequestError
+		if errors.As(err, &apiError) && apiError.ClientError() {
+			return wrapPermanentClientError(err)
+		}
+	}
+
+	return err
+}
+
+func (c *cloudflareNameserver) updateRecord(record Record) error {
 	zoneId, err := c.lookupZone(record.Zone)
 	if err != nil {
 		return err

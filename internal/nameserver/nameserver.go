@@ -8,10 +8,6 @@ import (
 	"github.com/lukasdietrich/dynflare/internal/config"
 )
 
-var (
-	ErrUnknownZone = errors.New("zone unknown")
-)
-
 type RecordKind string
 
 const (
@@ -37,4 +33,26 @@ func New(cfg config.Nameserver) (Nameserver, error) {
 	default:
 		return nil, fmt.Errorf("unknown provider %q", cfg.Provider)
 	}
+}
+
+type permanentClientError struct {
+	cause error
+}
+
+func (e *permanentClientError) Error() string {
+	return e.cause.Error()
+}
+
+func (e *permanentClientError) Unwrap() error {
+	return e.cause
+}
+
+func wrapPermanentClientError(err error) error {
+	return &permanentClientError{cause: err}
+}
+
+func IsPermanentClientError(err error) bool {
+	var pcErr *permanentClientError
+	return errors.As(err, &pcErr)
+
 }

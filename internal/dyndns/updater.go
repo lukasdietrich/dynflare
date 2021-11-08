@@ -2,88 +2,95 @@ package dyndns
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/lukasdietrich/dynflare/internal/cache"
-	"github.com/lukasdietrich/dynflare/internal/config"
 	"github.com/lukasdietrich/dynflare/internal/monitor"
 	"github.com/lukasdietrich/dynflare/internal/nameserver"
 )
 
-type Updater struct {
-	cache       *cache.Cache
-	domainSlice []*domainUpdater
+type domainUpdater struct {
+	nameserver nameserver.Nameserver
+	filter     *filter
+	zoneName   string
+	domainName string
+	disabled   bool
 }
 
-func NewUpdater(config config.Config, cache *cache.Cache) (*Updater, error) {
-	nameserverMap, err := newNameservers(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Updater{
-		cache:       cache,
-		domainSlice: newDomainUpdaters(config, nameserverMap),
-	}, nil
-}
-
-func (u *Updater) Update(updates <-chan *monitor.State) error {
-	for state := range updates {
-		log.Debug().Msg("network configuration changed")
-
-		addrSlice := state.AddrSlice()
-
-		if err := u.updateDomains(addrSlice); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (u *Updater) updateDomains(addrSlice []monitor.Addr) error {
-	defer u.cache.PersistIfDirty()
-
-	for _, domain := range u.domainSlice {
-		if err := domain.update(u.cache, addrSlice); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func newNameservers(cfg config.Config) (map[string]nameserver.Nameserver, error) {
-	nameserverMap := make(map[string]nameserver.Nameserver)
-	for _, c := range cfg.Nameservers {
-		server, err := nameserver.New(c)
-		if err != nil {
-			return nil, err
+func (d *domainUpdater) update(cache *cache.Cache, addrSlice []monitor.Addr) error {
+	addr := d.filterCandidate(addrSlice)
+	if addr != nil {
+		if d.disabled {
+			log.Debug().
+				Str("domain", d.domainName).
+				Stringer("ip", addr.IP).
+				Msg("candidate found, but skipping because of previous errors.")
+			return nil
 		}
 
-		for _, zone := range c.Zones {
-			if _, ok := nameserverMap[zone]; ok {
-				return nil, fmt.Errorf("zone %q is defined multiple times", zone)
+		if d.checkCache(cache, addr) {
+			log.Info().
+				Str("domain", d.domainName).
+				Stringer("ip", addr.IP).
+				Msg("candidate differs from cache. updating record.")
+
+			if err := d.updateRecord(addr); err != nil {
+				return err
 			}
 
-			nameserverMap[zone] = server
+			d.updateCache(cache, addr)
+		} else {
+			log.Debug().
+				Str("domain", d.domainName).
+				Stringer("ip", addr.IP).
+				Msg("candidate matches cache. skip update.")
 		}
 	}
 
-	return nameserverMap, nil
+	return nil
 }
 
-func newDomainUpdaters(cfg config.Config, nameserverMap map[string]nameserver.Nameserver) []*domainUpdater {
-	domainSlice := make([]*domainUpdater, len(cfg.Domains))
-	for i, c := range cfg.Domains {
-		domainSlice[i] = &domainUpdater{
-			nameserver: nameserverMap[c.Zone],
-			filter:     newFilter(c),
-			zoneName:   c.Zone,
-			domainName: c.Name,
+func (d *domainUpdater) filterCandidate(addrSlice []monitor.Addr) *monitor.Addr {
+	for _, addr := range addrSlice {
+		if d.filter.match(addr) {
+			log.Debug().
+				Str("domain", d.domainName).
+				Stringer("ip", addr.IP).
+				Msg("found an ip candidate")
+
+			return &addr
 		}
 	}
 
-	return domainSlice
+	return nil
+}
+
+func (d *domainUpdater) updateRecord(addr *monitor.Addr) error {
+	record := nameserver.Record{
+		Zone:   d.zoneName,
+		Domain: d.domainName,
+		Kind:   determineIPKind(addr),
+		IP:     addr.IP,
+	}
+
+	return d.nameserver.UpdateRecord(record)
+}
+
+func (d *domainUpdater) checkCache(cache *cache.Cache, addr *monitor.Addr) bool {
+	cached := cache.Get(d.deriveCacheKey(addr))
+	return cached != addr.IP.String()
+}
+
+func (d *domainUpdater) updateCache(cache *cache.Cache, addr *monitor.Addr) {
+	cache.Put(d.deriveCacheKey(addr), addr.IP.String())
+}
+
+func (d *domainUpdater) deriveCacheKey(addr *monitor.Addr) string {
+	return fmt.Sprintf("%s:%s", // "example.com:aaaa"
+		url.PathEscape(d.domainName),
+		strings.ToLower(string(determineIPKind(addr))),
+	)
 }
