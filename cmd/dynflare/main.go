@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -27,25 +29,21 @@ func main() {
 
 func run() error {
 	var (
-		configFilename      string
-		cacheFilename       string
-		logLevel            string
-		enableConsoleLogger bool
+		configFilename string
+		cacheFilename  string
 	)
 
 	flag.StringVar(&configFilename, "config", "config.toml", "Path to config.toml")
 	flag.StringVar(&cacheFilename, "cache", "cache.toml", "Path to cache.toml")
-	flag.StringVar(&logLevel, "log", "debug", "Set the log level (debug, info, warn, error)")
-	flag.BoolVar(&enableConsoleLogger, "pretty-console-logger", false, "Enable pretty, but inefficient console logger")
 	flag.Parse()
 
-	if err := setupLogger(logLevel, enableConsoleLogger); err != nil {
-		return fmt.Errorf("could not setup logger: %w", err)
-	}
-
-	config, err := config.Parse(configFilename)
+	cfg, err := config.Parse(configFilename)
 	if err != nil {
 		return fmt.Errorf("could not read config: %w", err)
+	}
+
+	if err := setupLogger(cfg); err != nil {
+		return fmt.Errorf("could not setup logger: %w", err)
 	}
 
 	cache, err := cache.NewCache(cacheFilename)
@@ -53,28 +51,50 @@ func run() error {
 		return fmt.Errorf("could not open cache: %w", err)
 	}
 
-	return update(config, cache)
+	return update(cfg, cache)
 }
 
-func setupLogger(logLevel string, enableConsoleLogger bool) error {
-	level, err := zerolog.ParseLevel(strings.ToLower(logLevel))
+func setupLogger(cfg config.Config) error {
+	ctx := zerolog.New(createLogWriter(cfg)).With()
+
+	if cfg.Log.Timestamp {
+		ctx = ctx.Timestamp()
+	}
+
+	if cfg.Log.Caller {
+		ctx = ctx.Caller()
+	}
+
+	logger := ctx.Logger()
+
+	level, err := zerolog.ParseLevel(strings.ToLower(cfg.Log.Level))
 	if err != nil {
-		return fmt.Errorf("could not set log level to %q: %w", logLevel, err)
+		return fmt.Errorf("could not set log level to %q: %w", cfg.Log.Level, err)
 	}
 
-	zerolog.SetGlobalLevel(level)
+	log.Logger = logger.Level(level)
 
-	if enableConsoleLogger {
-		log.Logger = log.Logger.Output(zerolog.NewConsoleWriter())
-	}
-
+	log.Info().
+		Stringer("loglevel", level).
+		Msg("setting log level")
 	return nil
 }
 
-func update(config config.Config, cache *cache.Cache) error {
-	updater, err := dyndns.NewUpdateManager(config, cache)
+func createLogWriter(cfg config.Config) io.Writer {
+	if strings.ToLower(cfg.Log.Format) == "text" {
+		w := zerolog.NewConsoleWriter()
+		w.TimeFormat = time.RFC3339
+
+		return w
+	}
+
+	return os.Stderr
+}
+
+func update(cfg config.Config, cache *cache.Cache) error {
+	updaterManager, err := dyndns.NewUpdateManager(cfg, cache)
 	if err != nil {
-		return fmt.Errorf("could not create updater: %w", err)
+		return fmt.Errorf("could not create updatemanager: %w", err)
 	}
 
 	state, err := monitor.NewState()
@@ -87,6 +107,6 @@ func update(config config.Config, cache *cache.Cache) error {
 		return fmt.Errorf("could not start state monitor: %w", err)
 	}
 
-	updater.HandleUpdates(updates) // <- infinite loop
+	updaterManager.HandleUpdates(updates) // <- infinite loop
 	return fmt.Errorf("the event loop stopped unexpectedly")
 }

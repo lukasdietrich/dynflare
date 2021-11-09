@@ -1,5 +1,17 @@
 package config
 
+type Log struct {
+	// Level is the log level (eg. "debug", "info", "warn" or "error").
+	Level string `toml:"level"`
+	// Format is the log output format.
+	// "json" emits machine readable json objects, "text" emits human readable text.
+	Format string `toml:"format"`
+	// Caller is a flag to enable source filenames and line numbers in the log output.
+	Caller bool `toml:"caller"`
+	// Timestamp is a flag to enable timestamps in log the output.
+	Timestamp bool `toml:"timestamp"`
+}
+
 type Nameserver struct {
 	// Provider is the name of the api adapter used to change dns records.
 	Provider string `toml:"provider"`

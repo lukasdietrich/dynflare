@@ -1,3 +1,13 @@
+[log]
+  # Log level. One of "debug", "info", "warn", "error".
+  level = "debug"
+  # Log output format. One of "json" or "text".
+  format = "text"
+  # Include source filenames and line numbers in the log output.
+  caller = true
+  # Include timestamps in log the output.
+  timestamp = true
+
 [[nameserver]]
   provider = "cloudflare"
   # Profile > API Tokens > Create Token
