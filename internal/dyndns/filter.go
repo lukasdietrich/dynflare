@@ -25,10 +25,30 @@ func newFilter(cfg config.Domain) *filter {
 func (f *filter) match(addr monitor.Addr) bool {
 	normalizeIPNet(&addr.IPNet)
 
-	return addr.IP.IsGlobalUnicast() &&
+	return isPublicIP(addr.IP) &&
 		f.matchKind(addr) &&
 		f.matchInterface(addr) &&
 		f.matchSuffix(addr)
+}
+
+func mustParseIPNet(s string) net.IPNet {
+	_, ipnet, _ := net.ParseCIDR(s)
+	return *ipnet
+}
+
+var specialLocalNetworks = [...]net.IPNet{
+	mustParseIPNet("fc00::/7"),  // Unique local address
+	mustParseIPNet("fe80::/10"), // Link-local address
+}
+
+func isPublicIP(ip net.IP) bool {
+	for _, mask := range specialLocalNetworks {
+		if mask.Contains(ip) {
+			return false
+		}
+	}
+
+	return ip.IsGlobalUnicast()
 }
 
 func (f *filter) matchKind(addr monitor.Addr) bool {
