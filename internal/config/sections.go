@@ -12,6 +12,11 @@ type Log struct {
 	Timestamp bool `toml:"timestamp"`
 }
 
+type Notification struct {
+	// Shoutrrr URL (see <https://github.com/containrrr/shoutrrr>)
+	URL string `toml:"url"`
+}
+
 type Nameserver struct {
 	// Provider is the name of the api adapter used to change dns records.
 	Provider string `toml:"provider"`

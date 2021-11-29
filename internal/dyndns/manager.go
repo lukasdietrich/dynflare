@@ -14,6 +14,7 @@ import (
 type UpdateManager struct {
 	cache        *cache.Cache
 	updaterSlice []*domainUpdater
+	notifier     *notifier
 }
 
 func NewUpdateManager(cfg config.Config, cache *cache.Cache) (*UpdateManager, error) {
@@ -22,7 +23,12 @@ func NewUpdateManager(cfg config.Config, cache *cache.Cache) (*UpdateManager, er
 		return nil, err
 	}
 
-	return &UpdateManager{cache: cache, updaterSlice: updaterSlice}, nil
+	notifier, err := newNotifier(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &UpdateManager{cache, updaterSlice, notifier}, nil
 }
 
 func (u *UpdateManager) HandleUpdates(updates <-chan *monitor.State) {
@@ -36,7 +42,7 @@ func (u *UpdateManager) updateDomains(addrSlice []monitor.Addr) {
 	defer u.cache.PersistIfDirty()
 
 	for _, updater := range u.updaterSlice {
-		if err := updater.update(u.cache, addrSlice); err != nil {
+		if err := updater.update(u.cache, u.notifier, addrSlice); err != nil {
 			log.Error().
 				Err(err).
 				Str("domain", updater.domainName).

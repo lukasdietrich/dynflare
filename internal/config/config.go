@@ -7,9 +7,10 @@ import (
 )
 
 type Config struct {
-	Log         Log          `toml:"log"`
-	Nameservers []Nameserver `toml:"nameserver"`
-	Domains     []Domain     `toml:"domain"`
+	Log           Log            `toml:"log"`
+	Notifications []Notification `toml:"notification"`
+	Nameservers   []Nameserver   `toml:"nameserver"`
+	Domains       []Domain       `toml:"domain"`
 }
 
 func Parse(filename string) (Config, error) {

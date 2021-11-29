@@ -8,6 +8,10 @@
   # Include timestamps in log the output.
   timestamp = true
 
+[[notification]]
+  # Shoutrrr service url (see https://github.com/containrrr/shoutrrr).
+  url = "slack://token:token@channel/"
+
 [[nameserver]]
   provider = "cloudflare"
   # Profile > API Tokens > Create Token
@@ -20,6 +24,8 @@
 [[domain]]
   # The domain record to update.
   name = "raspberry-pi.example.com"
+  # Zone is the zone name matching a configured nameserver.
+  zone = "example.com"
   #    A for IPv4
   # AAAA for IPv6
   kind = "AAAA"

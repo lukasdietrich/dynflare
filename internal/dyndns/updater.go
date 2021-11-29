@@ -20,7 +20,7 @@ type domainUpdater struct {
 	disabled   bool
 }
 
-func (d *domainUpdater) update(cache *cache.Cache, addrSlice []monitor.Addr) error {
+func (d *domainUpdater) update(cache *cache.Cache, notifier *notifier, addrSlice []monitor.Addr) error {
 	addr := d.filterCandidate(addrSlice)
 	if addr != nil {
 		if d.disabled {
@@ -41,6 +41,7 @@ func (d *domainUpdater) update(cache *cache.Cache, addrSlice []monitor.Addr) err
 				return err
 			}
 
+			go notifier.notify("The dns record of %q has been updated to %q.", d.domainName, addr.IP)
 			d.updateCache(cache, addr)
 		} else {
 			log.Debug().
