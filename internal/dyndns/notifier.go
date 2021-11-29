@@ -45,9 +45,21 @@ func (n *notifier) notify(format string, v ...interface{}) {
 		Str("content", message).
 		Msg("sending notification")
 
-	if errs := n.router.Send(message, nil); len(errs) > 0 {
+	if errs := filterEmptyErrors(n.router.Send(message, nil)); len(errs) > 0 {
 		log.Warn().
 			Errs("errors", errs).
 			Msg("could not send notification")
 	}
+}
+
+func filterEmptyErrors(errs []error) []error {
+	var nonEmptyErrors []error
+
+	for _, err := range errs {
+		if err != nil {
+			nonEmptyErrors = append(nonEmptyErrors, err)
+		}
+	}
+
+	return nonEmptyErrors
 }
