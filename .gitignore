@@ -13,3 +13,6 @@
 
 !Dockerfile
 !docker-compose.yml
+
+!packaging/**/*.spec
+!packaging/**/*.service

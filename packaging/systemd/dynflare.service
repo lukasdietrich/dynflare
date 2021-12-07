@@ -1,0 +1,10 @@
+[Unit]
+Description=Dynflare
+After=network.target local-fs.target
+
+[Service]
+ExecStart=/usr/bin/dynflare -config /etc/dynflare/config.toml -cache /var/cache/dynflare/cache.toml
+User=dynflare
+
+[Install]
+WantedBy=multi-user.target
