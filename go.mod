@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/BurntSushi/toml v0.4.1
 	github.com/cloudflare/cloudflare-go v0.27.0
-	github.com/containrrr/shoutrrr v0.5.2
+	github.com/containrrr/shoutrrr v0.6.0
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
