@@ -1,19 +1,26 @@
 module github.com/lukasdietrich/dynflare
 
-go 1.16
+go 1.21
 
 require (
-	github.com/BurntSushi/toml v0.4.1
-	github.com/cloudflare/cloudflare-go v0.27.0
-	github.com/containrrr/shoutrrr v0.6.0
-	github.com/fatih/color v1.13.0 // indirect
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/onsi/ginkgo v1.16.5 // indirect
-	github.com/onsi/gomega v1.17.0 // indirect
-	github.com/rs/zerolog v1.26.0
+	github.com/BurntSushi/toml v1.3.2
+	github.com/cloudflare/cloudflare-go v0.89.0
+	github.com/containrrr/shoutrrr v0.8.0
+	github.com/rs/zerolog v1.32.0
 	github.com/vishvananda/netlink v1.1.0
-	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74 // indirect
-	golang.org/x/text v0.3.8 // indirect
-	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
+)
+
+require (
+	github.com/fatih/color v1.16.0 // indirect
+	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.5 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/vishvananda/netns v0.0.4 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
 )

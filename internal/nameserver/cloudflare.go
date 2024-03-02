@@ -48,13 +48,13 @@ func (c *cloudflareNameserver) lookupZone(zoneName string) (string, error) {
 	return zoneId, nil
 }
 
-func (c *cloudflareNameserver) lookupRecord(zoneId, domainName string, kind RecordKind) (*cloudflare.DNSRecord, error) {
-	filter := cloudflare.DNSRecord{
+func (c *cloudflareNameserver) lookupRecord(resource *cloudflare.ResourceContainer, domainName string, kind RecordKind) (*cloudflare.DNSRecord, error) {
+	filter := cloudflare.ListDNSRecordsParams{
 		Type: string(kind),
 		Name: domainName,
 	}
 
-	records, err := c.client.DNSRecords(context.Background(), zoneId, filter)
+	records, _, err := c.client.ListDNSRecords(context.Background(), resource, filter)
 	if err != nil {
 		return nil, fmt.Errorf("could not lookup records: %w", err)
 	}
@@ -70,7 +70,7 @@ func (c *cloudflareNameserver) UpdateRecord(record Record) error {
 	err := c.updateRecord(record)
 
 	if err != nil {
-		var apiError *cloudflare.APIRequestError
+		var apiError *cloudflare.Error
 		if errors.As(err, &apiError) && apiError.ClientError() {
 			return wrapPermanentClientError(err)
 		}
@@ -85,44 +85,65 @@ func (c *cloudflareNameserver) updateRecord(record Record) error {
 		return err
 	}
 
-	dnsRecord, err := c.lookupRecord(zoneId, record.Domain, record.Kind)
+	resource := cloudflare.ZoneIdentifier(zoneId)
+
+	dnsRecord, err := c.lookupRecord(resource, record.Domain, record.Kind)
 	if err != nil {
 		return err
 	}
 
 	if dnsRecord != nil {
-		newRecord := *dnsRecord
-		newRecord.Content = record.IP.String()
+		return c.updateExistingRecord(resource, record, dnsRecord)
+	}
 
-		if dnsRecord.Content != newRecord.Content {
-			log.Debug().
-				Str("id", newRecord.ID).
-				Str("content", newRecord.Content).
-				Msg("updating record")
+	return err
+}
 
-			return c.client.UpdateDNSRecord(context.Background(), zoneId, newRecord.ID, newRecord)
-		} else {
-			log.Debug().
-				Str("id", newRecord.ID).
-				Str("content", newRecord.Content).
-				Msg("record already up to date")
-		}
+func (c *cloudflareNameserver) updateExistingRecord(resource *cloudflare.ResourceContainer, record Record, oldDnsRecord *cloudflare.DNSRecord) error {
+	if record.IP.String() == oldDnsRecord.Content {
+		log.Debug().
+			Str("id", oldDnsRecord.ID).
+			Str("content", oldDnsRecord.Content).
+			Msg("record already up to date")
 
 		return nil
 	}
 
-	newRecord := cloudflare.DNSRecord{
+	updateRecordParams := cloudflare.UpdateDNSRecordParams{
+		ID:      oldDnsRecord.ID,
+		Content: record.IP.String(),
+	}
+
+	newDnsRecord, err := c.client.UpdateDNSRecord(context.Background(), resource, updateRecordParams)
+	if err != nil {
+		return err
+	}
+
+	log.Debug().
+		Str("id", newDnsRecord.ID).
+		Str("content", newDnsRecord.Content).
+		Msg("updating record")
+
+	return nil
+}
+
+func (c *cloudflareNameserver) createNewRecord(resource *cloudflare.ResourceContainer, record Record) error {
+	createRecordParams := cloudflare.CreateDNSRecordParams{
 		Type:    string(record.Kind),
 		Name:    record.Domain,
 		Content: record.IP.String(),
 	}
 
+	newDnsRecord, err := c.client.CreateDNSRecord(context.Background(), resource, createRecordParams)
+	if err != nil {
+		return err
+	}
+
 	log.Debug().
-		Str("domain", newRecord.Name).
-		Str("type", newRecord.Type).
-		Str("content", newRecord.Content).
+		Str("domain", newDnsRecord.Name).
+		Str("type", newDnsRecord.Type).
+		Str("content", newDnsRecord.Content).
 		Msg("creating new record")
 
-	_, err = c.client.CreateDNSRecord(context.Background(), zoneId, newRecord)
-	return err
+	return nil
 }
