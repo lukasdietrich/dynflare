@@ -1,11 +1,11 @@
-FROM golang:alpine as builder
+FROM docker.io/library/golang:alpine as builder
 
 	WORKDIR /github.com/lukasdietrich/dynflare
 	COPY . .
 
 	RUN go build ./cmd/dynflare
 
-FROM alpine
+FROM docker.io/library/alpine
 
 	WORKDIR /app
 	COPY --from=builder /github.com/lukasdietrich/dynflare/dynflare .
