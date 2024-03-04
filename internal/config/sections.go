@@ -8,8 +8,6 @@ type Log struct {
 	Format string `toml:"format"`
 	// Caller is a flag to enable source filenames and line numbers in the log output.
 	Caller bool `toml:"caller"`
-	// Timestamp is a flag to enable timestamps in log the output.
-	Timestamp bool `toml:"timestamp"`
 }
 
 type Notification struct {

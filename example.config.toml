@@ -5,8 +5,6 @@
   format = "text"
   # Include source filenames and line numbers in the log output.
   caller = true
-  # Include timestamps in log the output.
-  timestamp = true
 
 [[notification]]
   # Shoutrrr service url (see https://github.com/containrrr/shoutrrr).
