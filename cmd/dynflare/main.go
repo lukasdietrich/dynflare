@@ -54,6 +54,10 @@ func setupLogger(cfg config.Config) error {
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
+	slog.Info("setup logger",
+		slog.String("format", cfg.Log.Format),
+		slog.String("level", cfg.Log.Level))
+
 	return nil
 }
 
@@ -62,8 +66,6 @@ func createLoggerHandler(cfg config.Config) (slog.Handler, error) {
 	if err := level.UnmarshalText([]byte(cfg.Log.Level)); err != nil {
 		return nil, fmt.Errorf("could not set log level to %q: %w", cfg.Log.Level, err)
 	}
-
-	slog.Info("setting log level", slog.Any("logLevel", level))
 
 	options := slog.HandlerOptions{
 		AddSource: cfg.Log.Caller,

@@ -31,10 +31,9 @@ func Parse(filename string) (Config, error) {
 func createDefault() Config {
 	return Config{
 		Log: Log{
-			Level:     "info",
-			Format:    "json",
-			Caller:    true,
-			Timestamp: true,
+			Level:  "info",
+			Format: "json",
+			Caller: true,
 		},
 		Nameservers: nil,
 		Domains:     nil,
