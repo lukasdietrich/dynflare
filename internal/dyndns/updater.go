@@ -2,10 +2,9 @@ package dyndns
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strings"
-
-	"github.com/rs/zerolog/log"
 
 	"github.com/lukasdietrich/dynflare/internal/cache"
 	"github.com/lukasdietrich/dynflare/internal/monitor"
@@ -24,18 +23,16 @@ func (d *domainUpdater) update(cache *cache.Cache, notifier *notifier, addrSlice
 	addr := d.filterCandidate(addrSlice)
 	if addr != nil {
 		if d.disabled {
-			log.Debug().
-				Str("domain", d.domainName).
-				Stringer("ip", addr.IP).
-				Msg("candidate found, but skipping because of previous errors.")
+			slog.Debug("candidate found, but skipping because of previous errors.",
+				slog.String("domain", d.domainName),
+				slog.Any("ip", addr.IP))
 			return nil
 		}
 
 		if d.checkCache(cache, addr) {
-			log.Info().
-				Str("domain", d.domainName).
-				Stringer("ip", addr.IP).
-				Msg("candidate differs from cache. updating record.")
+			slog.Info("candidate differs from cache. updating record.",
+				slog.String("domain", d.domainName),
+				slog.Any("ip", addr.IP))
 
 			if err := d.updateRecord(addr); err != nil {
 				return err
@@ -44,10 +41,9 @@ func (d *domainUpdater) update(cache *cache.Cache, notifier *notifier, addrSlice
 			go notifier.notify("The dns record of %q has been updated to %q.", d.domainName, addr.IP)
 			d.updateCache(cache, addr)
 		} else {
-			log.Debug().
-				Str("domain", d.domainName).
-				Stringer("ip", addr.IP).
-				Msg("candidate matches cache. skip update.")
+			slog.Debug("candidate matches cache. skip update.",
+				slog.String("domain", d.domainName),
+				slog.Any("ip", addr.IP))
 		}
 	}
 
@@ -57,10 +53,9 @@ func (d *domainUpdater) update(cache *cache.Cache, notifier *notifier, addrSlice
 func (d *domainUpdater) filterCandidate(addrSlice []monitor.Addr) *monitor.Addr {
 	for _, addr := range addrSlice {
 		if d.filter.match(addr) {
-			log.Debug().
-				Str("domain", d.domainName).
-				Stringer("ip", addr.IP).
-				Msg("found an ip candidate")
+			slog.Debug("found an ip candidate",
+				slog.String("domain", d.domainName),
+				slog.Any("ip", addr.IP))
 
 			return &addr
 		}

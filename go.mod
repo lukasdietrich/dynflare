@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/cloudflare/cloudflare-go v0.89.0
 	github.com/containrrr/shoutrrr v0.8.0
-	github.com/rs/zerolog v1.32.0
 	github.com/vishvananda/netlink v1.1.0
 )
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/cloudflare/cloudflare-go"
-	"github.com/rs/zerolog/log"
 )
 
 type cloudflareNameserver struct {
@@ -101,10 +101,9 @@ func (c *cloudflareNameserver) updateRecord(record Record) error {
 
 func (c *cloudflareNameserver) updateExistingRecord(resource *cloudflare.ResourceContainer, record Record, oldDnsRecord *cloudflare.DNSRecord) error {
 	if record.IP.String() == oldDnsRecord.Content {
-		log.Debug().
-			Str("id", oldDnsRecord.ID).
-			Str("content", oldDnsRecord.Content).
-			Msg("record already up to date")
+		slog.Debug("record already up to date",
+			slog.String("id", oldDnsRecord.ID),
+			slog.String("content", oldDnsRecord.Content))
 
 		return nil
 	}
@@ -119,10 +118,9 @@ func (c *cloudflareNameserver) updateExistingRecord(resource *cloudflare.Resourc
 		return err
 	}
 
-	log.Debug().
-		Str("id", newDnsRecord.ID).
-		Str("content", newDnsRecord.Content).
-		Msg("updating record")
+	slog.Debug("updating record",
+		slog.String("id", newDnsRecord.ID),
+		slog.String("content", newDnsRecord.Content))
 
 	return nil
 }
@@ -139,11 +137,10 @@ func (c *cloudflareNameserver) createNewRecord(resource *cloudflare.ResourceCont
 		return err
 	}
 
-	log.Debug().
-		Str("domain", newDnsRecord.Name).
-		Str("type", newDnsRecord.Type).
-		Str("content", newDnsRecord.Content).
-		Msg("creating new record")
+	slog.Debug("creating new record",
+		slog.String("domain", newDnsRecord.Name),
+		slog.String("type", newDnsRecord.Type),
+		slog.String("content", newDnsRecord.Content))
 
 	return nil
 }

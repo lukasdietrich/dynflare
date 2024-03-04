@@ -1,10 +1,10 @@
 package cache
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/rs/zerolog/log"
 )
 
 type Cache struct {
@@ -22,14 +22,14 @@ func (c *Cache) load() error {
 	f, err := os.Open(c.filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Debug().Msg("cache is empty")
+			slog.Debug("cache is empty")
 			return nil
 		}
 
 		return err
 	}
 
-	log.Debug().Str("filename", c.filename).Msg("reading cache")
+	slog.Debug("reading cache", slog.String("filename", c.filename))
 
 	defer f.Close()
 	_, err = toml.DecodeReader(f, &c.entries)
@@ -38,24 +38,24 @@ func (c *Cache) load() error {
 
 func (c *Cache) PersistIfDirty() error {
 	if !c.dirty {
-		log.Debug().Msg("cache is not dirty, skip writing")
+		slog.Debug("cache is not dirty, skip writing")
 		return nil
 	}
 
-	log.Info().Str("filename", c.filename).Msg("writing cache")
+	slog.Info("writing cache", slog.String("filename", c.filename))
 
 	f, err := os.OpenFile(c.filename, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Error().Err(err).Msg("could not write cache")
+		slog.Error("could not write cache", slog.Any("err", err))
 		return err
 	}
 
 	defer f.Close()
 
 	if err = toml.NewEncoder(f).Encode(c.entries); err != nil {
-		log.Error().Err(err).Msg("could not encode cache entries")
+		slog.Error("could not encode cache entries", slog.Any("err", err))
 	} else {
-		log.Debug().Msg("clearing cache dirty flag")
+		slog.Debug("clearing cache dirty flag")
 		c.dirty = false
 	}
 
@@ -64,21 +64,28 @@ func (c *Cache) PersistIfDirty() error {
 
 func (c *Cache) Get(key string) string {
 	value := c.entries[key]
-	log.Debug().Str("key", key).Str("value", value).Msg("read value from cache")
+
+	slog.Debug("read value from cache",
+		slog.String("key", key),
+		slog.String("value", value))
+
 	return value
 }
 
 func (c *Cache) Put(key, value string) {
 	if c.entries == nil {
-		log.Debug().Msg("cache is nil, creating new map")
+		slog.Debug("cache is nil, creating new map")
 		c.entries = make(map[string]string)
 	}
 
-	log.Debug().Str("key", key).Str("value", value).Msg("updating cache in memory")
+	slog.Debug("updating cache in memory",
+		slog.String("key", key),
+		slog.String("value", value))
+
 	c.entries[key] = value
 
 	if !c.dirty {
-		log.Debug().Msg("setting cache dirty flag")
+		slog.Debug("setting cache dirty flag")
 		c.dirty = true
 	}
 }

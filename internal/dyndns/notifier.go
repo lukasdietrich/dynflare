@@ -2,10 +2,10 @@ package dyndns
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/containrrr/shoutrrr"
 	"github.com/containrrr/shoutrrr/pkg/router"
-	"github.com/rs/zerolog/log"
 
 	"github.com/lukasdietrich/dynflare/internal/config"
 )
@@ -35,20 +35,16 @@ func newNotifier(cfg config.Config) (*notifier, error) {
 
 func (n *notifier) notify(format string, v ...interface{}) {
 	if n == nil {
-		log.Debug().Msg("no notification urls configured")
+		slog.Debug("no notification urls configured")
 		return
 	}
 
 	message := fmt.Sprintf(format, v...)
 
-	log.Debug().
-		Str("content", message).
-		Msg("sending notification")
+	slog.Debug("sending notification", slog.String("content", message))
 
 	if errs := filterEmptyErrors(n.router.Send(message, nil)); len(errs) > 0 {
-		log.Warn().
-			Errs("errors", errs).
-			Msg("could not send notification")
+		slog.Warn("could not send notification", slog.Any("errors", errs))
 	}
 }
 

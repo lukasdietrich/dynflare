@@ -2,8 +2,7 @@ package dyndns
 
 import (
 	"fmt"
-
-	"github.com/rs/zerolog/log"
+	"log/slog"
 
 	"github.com/lukasdietrich/dynflare/internal/cache"
 	"github.com/lukasdietrich/dynflare/internal/config"
@@ -33,7 +32,7 @@ func NewUpdateManager(cfg config.Config, cache *cache.Cache) (*UpdateManager, er
 
 func (u *UpdateManager) HandleUpdates(updates <-chan *monitor.State) {
 	for state := range updates {
-		log.Debug().Msg("network configuration changed")
+		slog.Debug("network configuration changed")
 		u.updateDomains(state.AddrSlice())
 	}
 }
@@ -43,15 +42,13 @@ func (u *UpdateManager) updateDomains(addrSlice []monitor.Addr) {
 
 	for _, updater := range u.updaterSlice {
 		if err := updater.update(u.cache, u.notifier, addrSlice); err != nil {
-			log.Error().
-				Err(err).
-				Str("domain", updater.domainName).
-				Msg("could not update domain")
+			slog.Error("could not update domain",
+				slog.Any("err", err),
+				slog.String("domain", updater.domainName))
 
 			if nameserver.IsPermanentClientError(err) {
-				log.Info().
-					Str("domain", updater.domainName).
-					Msg("update failed with a permanent client error. disabling updater for this domain to prevent flooding")
+				slog.Info("update failed with a permanent client error. disabling updater for this domain to prevent flooding",
+					slog.String("domain", updater.domainName))
 
 				updater.disabled = true
 			}

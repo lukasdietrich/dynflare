@@ -3,13 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
+	"log/slog"
 	"os"
-	"strings"
-	"time"
-
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/lukasdietrich/dynflare/internal/cache"
 	"github.com/lukasdietrich/dynflare/internal/config"
@@ -17,13 +12,9 @@ import (
 	"github.com/lukasdietrich/dynflare/internal/monitor"
 )
 
-func init() {
-	log.Logger = zerolog.New(os.Stderr).With().Timestamp().Caller().Logger()
-}
-
 func main() {
 	if err := run(); err != nil {
-		log.Fatal().Err(err).Msg("a fatal error occurred. stopping dynflare.")
+		slog.Error("a fatal error occurred. stopping dynflare.", slog.Any("err", err))
 	}
 }
 
@@ -55,40 +46,35 @@ func run() error {
 }
 
 func setupLogger(cfg config.Config) error {
-	ctx := zerolog.New(createLogWriter(cfg)).With()
-
-	if cfg.Log.Timestamp {
-		ctx = ctx.Timestamp()
-	}
-
-	if cfg.Log.Caller {
-		ctx = ctx.Caller()
-	}
-
-	logger := ctx.Logger()
-
-	level, err := zerolog.ParseLevel(strings.ToLower(cfg.Log.Level))
+	handler, err := createLoggerHandler(cfg)
 	if err != nil {
-		return fmt.Errorf("could not set log level to %q: %w", cfg.Log.Level, err)
+		return fmt.Errorf("could not create logger handler: %w", err)
 	}
 
-	log.Logger = logger.Level(level)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
 
-	log.Info().
-		Stringer("loglevel", level).
-		Msg("setting log level")
 	return nil
 }
 
-func createLogWriter(cfg config.Config) io.Writer {
-	if strings.ToLower(cfg.Log.Format) == "text" {
-		w := zerolog.NewConsoleWriter()
-		w.TimeFormat = time.RFC3339
-
-		return w
+func createLoggerHandler(cfg config.Config) (slog.Handler, error) {
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(cfg.Log.Level)); err != nil {
+		return nil, fmt.Errorf("could not set log level to %q: %w", cfg.Log.Level, err)
 	}
 
-	return os.Stderr
+	slog.Info("setting log level", slog.Any("logLevel", level))
+
+	options := slog.HandlerOptions{
+		AddSource: cfg.Log.Caller,
+		Level:     level,
+	}
+
+	if cfg.Log.Format == "json" {
+		return slog.NewJSONHandler(os.Stderr, &options), nil
+	}
+
+	return slog.NewTextHandler(os.Stderr, &options), nil
 }
 
 func update(cfg config.Config, cache *cache.Cache) error {

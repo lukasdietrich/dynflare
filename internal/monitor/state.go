@@ -1,9 +1,9 @@
 package monitor
 
 import (
+	"log/slog"
 	"net"
 
-	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
 )
 
@@ -53,14 +53,14 @@ func (s *State) updateLink(update netlink.LinkUpdate) bool {
 	attr := update.Link.Attrs()
 	link := linkState{Index: attr.Index, Name: attr.Name}
 
-	log.Debug().Str("link", link.Name).Msg("link update event")
+	slog.Debug("link update event", slog.String("link", link.Name))
 
 	oldValue, exists := s.linkMap[link.Index]
 	if !exists || oldValue != link {
 		s.linkMap[link.Index] = link
 		return true
 	} else {
-		log.Debug().Str("link", link.Name).Msg("link did not change")
+		slog.Debug("link did not change", slog.String("link", link.Name))
 		return false
 	}
 }
@@ -75,22 +75,22 @@ func (s *State) updateAddr(update netlink.AddrUpdate) bool {
 	oldValue, exists := s.addrMap[ipStr]
 
 	if update.NewAddr {
-		log.Debug().Str("ip", ipStr).Msg("add address event")
+		slog.Debug("add address event", slog.String("ip", ipStr))
 
 		if !exists || oldValue.LinkIndex != addr.LinkIndex || !oldValue.IP.Equal(addr.IP) {
 			s.addrMap[ipStr] = addr
 			return true
 		} else {
-			log.Debug().Str("ip", ipStr).Msg("address did not change. skip update")
+			slog.Debug("address did not change. skip update", slog.String("ip", ipStr))
 		}
 	} else {
-		log.Debug().Str("ip", ipStr).Msg("delete address event")
+		slog.Debug("delete address event", slog.String("ip", ipStr))
 
 		if exists {
 			delete(s.addrMap, ipStr)
 			return true
 		} else {
-			log.Debug().Str("ip", ipStr).Msg("address was not in state. skip delete.")
+			slog.Debug("address was not in state. skip delete.", slog.String("ip", ipStr))
 		}
 	}
 
