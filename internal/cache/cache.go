@@ -32,8 +32,9 @@ func (c *Cache) load() error {
 	slog.Debug("reading cache", slog.String("filename", c.filename))
 
 	defer f.Close()
-	_, err = toml.DecodeReader(f, &c.entries)
+	_, err = toml.NewDecoder(f).Decode(&c.entries)
 	return err
+
 }
 
 func (c *Cache) PersistIfDirty() error {
