@@ -96,7 +96,7 @@ func (c *cloudflareNameserver) updateRecord(record Record) error {
 		return c.updateExistingRecord(resource, record, dnsRecord)
 	}
 
-	return err
+	return c.createNewRecord(resource, record)
 }
 
 func (c *cloudflareNameserver) updateExistingRecord(resource *cloudflare.ResourceContainer, record Record, oldDnsRecord *cloudflare.DNSRecord) error {
