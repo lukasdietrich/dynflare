@@ -37,10 +37,10 @@ func (c *Cache) load() error {
 
 }
 
-func (c *Cache) PersistIfDirty() error {
+func (c *Cache) PersistIfDirty() {
 	if !c.dirty {
 		slog.Debug("cache is not dirty, skip writing")
-		return nil
+		return
 	}
 
 	slog.Info("writing cache", slog.String("filename", c.filename))
@@ -48,7 +48,7 @@ func (c *Cache) PersistIfDirty() error {
 	f, err := os.OpenFile(c.filename, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		slog.Error("could not write cache", slog.Any("err", err))
-		return err
+		return
 	}
 
 	defer f.Close()
@@ -59,8 +59,6 @@ func (c *Cache) PersistIfDirty() error {
 		slog.Debug("clearing cache dirty flag")
 		c.dirty = false
 	}
-
-	return err
 }
 
 func (c *Cache) Get(key string) string {
