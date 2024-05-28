@@ -22,7 +22,7 @@ func newNotifier(cfg config.Config) (*notifier, error) {
 	var urls []string
 
 	for _, notification := range cfg.Notifications {
-		urls = append(urls, notification.URL)
+		urls = append(urls, notification.URL.String())
 	}
 
 	router, err := shoutrrr.CreateSender(urls...)

@@ -66,11 +66,11 @@ func newNameservers(cfg config.Config) (map[string]nameserver.Nameserver, error)
 		}
 
 		for _, zone := range c.Zones {
-			if _, ok := nameserverMap[zone]; ok {
+			if _, ok := nameserverMap[zone.String()]; ok {
 				return nil, fmt.Errorf("zone %q is defined multiple times", zone)
 			}
 
-			nameserverMap[zone] = server
+			nameserverMap[zone.String()] = server
 		}
 	}
 
@@ -87,10 +87,10 @@ func createDomainUpdaters(cfg config.Config) ([]*domainUpdater, error) {
 
 	for i, c := range cfg.Domains {
 		domainSlice[i] = &domainUpdater{
-			nameserver: nameserverMap[c.Zone],
+			nameserver: nameserverMap[c.Zone.String()],
 			filter:     newFilter(c),
-			zoneName:   c.Zone,
-			domainName: c.Name,
+			zoneName:   c.Zone.String(),
+			domainName: c.Name.String(),
 		}
 	}
 

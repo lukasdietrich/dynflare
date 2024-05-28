@@ -55,8 +55,8 @@ func setupLogger(cfg config.Config) error {
 	slog.SetDefault(logger)
 
 	slog.Info("setup logger",
-		slog.String("format", cfg.Log.Format),
-		slog.String("level", cfg.Log.Level))
+		slog.String("format", cfg.Log.Format.String()),
+		slog.String("level", cfg.Log.Level.String()))
 
 	return nil
 }

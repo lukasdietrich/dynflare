@@ -17,8 +17,8 @@ type filter struct {
 func newFilter(cfg config.Domain) *filter {
 	return &filter{
 		kind:          nameserver.RecordKind(cfg.Kind),
-		interfaceName: cfg.Interface,
-		suffix:        net.ParseIP(cfg.Suffix), // net.ParseIP already handles empty string
+		interfaceName: cfg.Interface.String(),
+		suffix:        net.ParseIP(cfg.Suffix.String()), // net.ParseIP already handles empty string
 	}
 }
 

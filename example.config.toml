@@ -15,7 +15,7 @@
   # Profile > API Tokens > Create Token
   # The token must have the permission to edit the required zone(s), but nothing else.
   # Do not use the Global API Key!
-  credentials = "secret token"
+  credentials = "${DYNFLARE_CLOUDFLARE_TOKEN}"
   # List of zones this nameserver is responsible for.
   zones = ["example.com"]
 

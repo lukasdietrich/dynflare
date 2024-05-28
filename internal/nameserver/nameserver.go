@@ -29,7 +29,7 @@ type Nameserver interface {
 func New(cfg config.Nameserver) (Nameserver, error) {
 	switch cfg.Provider {
 	case "cloudflare":
-		return newCloudflare(cfg.Credentials)
+		return newCloudflare(cfg.Credentials.String())
 	default:
 		return nil, fmt.Errorf("unknown provider %q", cfg.Provider)
 	}
