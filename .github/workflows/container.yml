@@ -1,6 +1,9 @@
 name: Container Image
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_run:
     workflows:
       - Build, Test & Lint
