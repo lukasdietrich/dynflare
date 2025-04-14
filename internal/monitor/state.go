@@ -63,7 +63,7 @@ func (s *State) AddrSlice() []Addr {
 }
 
 func (s *State) updateLink(update netlink.LinkUpdate) bool {
-	attr := update.Link.Attrs()
+	attr := update.Attrs()
 	link := linkState{Index: attr.Index, Name: attr.Name}
 
 	slog.Debug("link update event", slog.String("link", link.Name))

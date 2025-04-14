@@ -31,7 +31,9 @@ func (c *Cache) load() error {
 
 	slog.Debug("reading cache", slog.String("filename", c.filename))
 
+	//nolint:errcheck
 	defer f.Close()
+
 	_, err = toml.NewDecoder(f).Decode(&c.entries)
 	return err
 
@@ -51,6 +53,7 @@ func (c *Cache) PersistIfDirty() {
 		return
 	}
 
+	//nolint:errcheck
 	defer f.Close()
 
 	if err = toml.NewEncoder(f).Encode(c.entries); err != nil {
