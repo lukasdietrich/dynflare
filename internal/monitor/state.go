@@ -5,12 +5,23 @@ import (
 	"net"
 
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 )
 
 type Addr struct {
 	net.IPNet
+	Flags    []Flag
 	LinkName string
 }
+
+type Flag string
+
+const (
+	FlagDepcrecated    = "deprecated"
+	FlagManagetempaddr = "mngtmpaddr"
+	FlagPermanent      = "permanent"
+	FlagTemporary      = "temporary"
+)
 
 type linkState struct {
 	Index int
@@ -19,6 +30,7 @@ type linkState struct {
 
 type addrState struct {
 	net.IPNet
+	Flags     []Flag
 	LinkIndex int
 }
 
@@ -42,6 +54,7 @@ func (s *State) AddrSlice() []Addr {
 	for _, addr := range s.addrMap {
 		addrSlice = append(addrSlice, Addr{
 			IPNet:    addr.IPNet,
+			Flags:    addr.Flags,
 			LinkName: s.linkMap[addr.LinkIndex].Name,
 		})
 	}
@@ -70,12 +83,13 @@ func (s *State) updateAddr(update netlink.AddrUpdate) bool {
 	addr := addrState{
 		IPNet:     update.LinkAddress,
 		LinkIndex: update.LinkIndex,
+		Flags:     parseFlags(update.Flags),
 	}
 
 	oldValue, exists := s.addrMap[ipStr]
 
 	if update.NewAddr {
-		slog.Debug("add address event", slog.String("ip", ipStr), slog.Any("update", update))
+		slog.Debug("add address event", slog.String("ip", ipStr), slog.Any("flags", addr.Flags))
 
 		if !exists || oldValue.LinkIndex != addr.LinkIndex || !oldValue.IP.Equal(addr.IP) {
 			s.addrMap[ipStr] = addr
@@ -126,4 +140,21 @@ func (s *State) Monitor() (<-chan *State, error) {
 
 	go s.handleUpdates(linkUpdates, addrUpdates, stateUpdates)
 	return stateUpdates, subscribeNetlink(linkUpdates, addrUpdates)
+}
+
+func parseFlags(rawFlags int) []Flag {
+	var flagsSlice []Flag
+
+	for flagUnix, flag := range map[int]Flag{
+		unix.IFA_F_DEPRECATED:     FlagDepcrecated,
+		unix.IFA_F_MANAGETEMPADDR: FlagManagetempaddr,
+		unix.IFA_F_PERMANENT:      FlagPermanent,
+		unix.IFA_F_TEMPORARY:      FlagTemporary,
+	} {
+		if rawFlags&flagUnix == flagUnix {
+			flagsSlice = append(flagsSlice, flag)
+		}
+	}
+
+	return flagsSlice
 }
