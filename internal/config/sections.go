@@ -53,17 +53,10 @@ type Nameserver struct {
 
 type Domain struct {
 	// Name is the domain name including its zone (eg. "raspberry-pi.example.com").
-	Name EnvString `toml:"name"`
+	Name EnvString `toml:"name" expr:"name"`
 	// Zone is the zone name matching a configured nameserver.
-	Zone EnvString `toml:"zone"`
-	// Kind is the dns record type (eg. "AAAA" for IPv6 or "A" for IPv4).
-	Kind EnvString `toml:"kind"`
-	// Interface is an optional filter for the network interface (eg. wlan0 or eth0).
-	Interface EnvString `toml:"interface"`
-	// Prefix is an optional filter for the network mask
-	// (eg. the first 64 bits of a ::/64 address).
-	Prefix EnvString `toml:"prefix"`
-	// Suffix is an optional filter for the part after the network mask
-	// (eg. the remaining 64 bits of a ::/64 address).
-	Suffix EnvString `toml:"suffix"`
+	Zone EnvString `toml:"zone" expr:"zone"`
+	// Filter is an expression (https://expr-lang.org/docs/language-definition) to
+	// select potential ip candidates.
+	Filter EnvString `toml:"filter" expr:"-"`
 }

@@ -8,7 +8,9 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/cloudflare/cloudflare-go v0.115.0
 	github.com/containrrr/shoutrrr v0.8.0
+	github.com/expr-lang/expr v1.17.2
 	github.com/vishvananda/netlink v1.3.0
+	golang.org/x/sys v0.32.0
 )
 
 require (
@@ -19,7 +21,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/vishvananda/netns v0.0.5 // indirect
 	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 )

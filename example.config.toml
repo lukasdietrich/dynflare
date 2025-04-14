@@ -24,13 +24,10 @@
   name = "raspberry-pi.example.com"
   # Zone is the zone name matching a configured nameserver.
   zone = "example.com"
-  #    A for IPv4
-  # AAAA for IPv6
-  kind = "AAAA"
-  # What network interface to search for an ip on.
-  # See `ip address`.
-  interface = "eth0"
-  # Suffix is optional and used to filter ip candidates based on suffix.
-  # The "suffix" is parsed as a full ip but matched by the inversed subnet mask.
-  # This is basically the part after the network prefix assigned by the isp.
-  suffix = "::1234:1234:1234:1234"
+
+  filter = """
+    Is6() and
+    IsInterface("eth0") and
+    HasSuffix("::1234:1234:1234:1234") and
+    not HasFlag("deprecated")
+  """

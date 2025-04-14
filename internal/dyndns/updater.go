@@ -3,6 +3,7 @@ package dyndns
 import (
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
 	"strings"
 
@@ -52,7 +53,15 @@ func (d *domainUpdater) update(cache *cache.Cache, notifier *notifier, addrSlice
 
 func (d *domainUpdater) filterCandidate(addrSlice []monitor.Addr) *monitor.Addr {
 	for _, addr := range addrSlice {
-		if d.filter.match(addr) {
+		normalizeIPNet(&addr.IPNet)
+
+		matches, err := d.filter.match(addr)
+		if err != nil {
+			slog.Error("could not filter candidate", slog.Any("err", err))
+			continue
+		}
+
+		if matches {
 			slog.Debug("found an ip candidate",
 				slog.String("domain", d.domainName),
 				slog.Any("ip", addr.IP))
@@ -89,4 +98,18 @@ func (d *domainUpdater) deriveCacheKey(addr *monitor.Addr) string {
 		url.PathEscape(d.domainName),
 		strings.ToLower(string(determineIPKind(addr))),
 	)
+}
+
+func normalizeIPNet(ipNet *net.IPNet) {
+	if v4 := ipNet.IP.To4(); v4 != nil {
+		ipNet.IP = v4
+	}
+}
+
+func determineIPKind(addr *monitor.Addr) nameserver.RecordKind {
+	if len(addr.IP) == net.IPv4len {
+		return nameserver.KindV4
+	}
+
+	return nameserver.KindV6
 }

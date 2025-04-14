@@ -1,37 +1,51 @@
 package dyndns
 
 import (
+	"fmt"
 	"net"
+	"slices"
+
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/lukasdietrich/dynflare/internal/config"
 	"github.com/lukasdietrich/dynflare/internal/monitor"
-	"github.com/lukasdietrich/dynflare/internal/nameserver"
 )
 
 type filter struct {
-	kind          nameserver.RecordKind
-	interfaceName string
-	prefix        net.IP
-	suffix        net.IP
+	program *vm.Program
 }
 
-func newFilter(cfg config.Domain) *filter {
-	return &filter{
-		kind:          nameserver.RecordKind(cfg.Kind),
-		interfaceName: cfg.Interface.String(),
-		prefix:        net.ParseIP(cfg.Prefix.String()), // net.ParseIP already handles empty string
-		suffix:        net.ParseIP(cfg.Suffix.String()), // "
+func newFilter(cfg config.Domain) (*filter, error) {
+	program, err := expr.Compile(cfg.Filter.String(),
+		expr.Env(&environment{}),
+		expr.AsBool(),
+		expr.WarnOnAny(),
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not compile filter expression of %q:%w", cfg.Name, err)
 	}
+
+	return &filter{program}, nil
 }
 
-func (f *filter) match(addr monitor.Addr) bool {
-	normalizeIPNet(&addr.IPNet)
+func (f *filter) match(addr monitor.Addr) (bool, error) {
+	result, err := expr.Run(f.program, &environment{addr})
+	if err != nil {
+		return false, fmt.Errorf("could not evaluate filter expression: %w", err)
+	}
 
-	return isPublicIP(addr.IP) &&
-		f.matchKind(addr) &&
-		f.matchInterface(addr) &&
-		f.matchPrefix(addr) &&
-		f.matchSuffix(addr)
+	resultBool, ok := result.(bool)
+	if !ok {
+		return false, fmt.Errorf("filter expression did not evaluate to a bool: %v", result)
+	}
+
+	return resultBool, nil
+}
+
+type environment struct {
+	monitor.Addr
 }
 
 func mustParseIPNet(s string) net.IPNet {
@@ -44,78 +58,68 @@ var specialLocalNetworks = [...]net.IPNet{
 	mustParseIPNet("fe80::/10"), // Link-local address
 }
 
-func isPublicIP(ip net.IP) bool {
+func (e *environment) IsPublic() bool {
 	for _, mask := range specialLocalNetworks {
-		if mask.Contains(ip) {
+		if mask.Contains(e.IP) {
 			return false
 		}
 	}
 
-	return ip.IsGlobalUnicast()
+	return e.IP.IsGlobalUnicast()
 }
 
-func (f *filter) matchKind(addr monitor.Addr) bool {
-	return f.kind == determineIPKind(&addr)
+func (e *environment) Is4() bool {
+	return len(e.IP) == net.IPv4len
 }
 
-func (f *filter) matchInterface(addr monitor.Addr) bool {
-	return f.interfaceName == "" || f.interfaceName == addr.LinkName
+func (e *environment) Is6() bool {
+	return len(e.IP) == net.IPv6len
 }
 
-func (f *filter) matchPrefix(addr monitor.Addr) bool {
-	if f.prefix != nil {
-		var (
-			prefix = f.prefix
-			mask   = addr.Mask
-			ip     = addr.IP
-		)
+func (e *environment) IsInterface(iface string) bool {
+	return e.LinkName == iface
+}
 
-		for i, maskByte := range mask {
-			// mask   = 11111100
-			// suffix = ......10
-			// ip     = 10110110
+func (e *environment) HasPrefix(prefixStr string) bool {
+	var (
+		prefix = net.ParseIP(prefixStr)
+		mask   = e.Mask
+		ip     = e.IP
+	)
 
-			if prefix[i]^ip[i]&maskByte != 0 {
-				return false
-			}
+	for i, maskByte := range mask {
+		// mask   = 11111100
+		// prefix = 10......
+		// ip     = 10110110
+
+		if prefix[i]^ip[i]&maskByte != 0 {
+			return false
 		}
 	}
 
 	return true
 }
 
-func (f *filter) matchSuffix(addr monitor.Addr) bool {
-	if f.suffix != nil {
-		var (
-			suffix = f.suffix
-			mask   = addr.Mask
-			ip     = addr.IP
-		)
+func (e *environment) HasSuffix(suffixStr string) bool {
+	var (
+		suffix = net.ParseIP(suffixStr)
+		mask   = e.Mask
+		ip     = e.IP
+	)
 
-		for i, maskByte := range mask {
-			// mask   = 11111100
-			// suffix = ......10
-			// ip     = 10110110
+	for i, maskByte := range mask {
+		// mask   = 11111100
+		// suffix = ......10
+		// ip     = 10110110
 
-			if suffix[i]^ip[i]&^maskByte != 0 {
-				return false
-			}
+		if suffix[i]^ip[i]&^maskByte != 0 {
+			return false
 		}
 	}
 
 	return true
 }
 
-func normalizeIPNet(ipNet *net.IPNet) {
-	if v4 := ipNet.IP.To4(); v4 != nil {
-		ipNet.IP = v4
-	}
-}
-
-func determineIPKind(addr *monitor.Addr) nameserver.RecordKind {
-	if len(addr.IP) == net.IPv4len {
-		return nameserver.KindV4
-	}
-
-	return nameserver.KindV6
+func (e *environment) HasFlag(flag string) bool {
+	return slices.Contains(e.Flags, monitor.Flag(flag))
 }

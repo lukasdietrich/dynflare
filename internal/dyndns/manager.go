@@ -86,9 +86,14 @@ func createDomainUpdaters(cfg config.Config) ([]*domainUpdater, error) {
 	domainSlice := make([]*domainUpdater, len(cfg.Domains))
 
 	for i, c := range cfg.Domains {
+		filter, err := newFilter(c)
+		if err != nil {
+			return nil, err
+		}
+
 		domainSlice[i] = &domainUpdater{
 			nameserver: nameserverMap[c.Zone.String()],
-			filter:     newFilter(c),
+			filter:     filter,
 			zoneName:   c.Zone.String(),
 			domainName: c.Name.String(),
 		}
