@@ -1,18 +1,19 @@
-name: Lint
+name: Build, Test & Lint
 
 on:
   push:
     branches:
       - master
-    pull_request:
+  pull_request:
+    branches:
+      - master
 
 permissions:
   contents: read
   pull-requests: read
 
 jobs:
-  golangci:
-    name: Lint
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +24,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-          cache: false
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v -race ./...
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
