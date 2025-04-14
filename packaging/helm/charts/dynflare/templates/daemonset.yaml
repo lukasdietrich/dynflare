@@ -1,0 +1,94 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "dynflare.fullname" . }}
+  labels:
+    {{- include "dynflare.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "dynflare.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "dynflare.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      hostNetwork: true
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/dynflare/config.toml
+              subPath: config.toml
+          env:
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            {{- range $i, $notification := .Values.dynflare.notification }}
+            - name: {{ $i | printf "DYNFLARE_NOTIFICATION_%d_URL" }}
+              valueFrom:
+                secretKeyRef:
+                  {{- with $notification.urlSecretRef }}
+                  name: {{ .name }}
+                  key: {{ .key }}
+                  {{ end -}}
+            {{ end }}
+            {{- range $i, $nameserver := .Values.dynflare.nameserver }}
+            - name: {{ $i | printf "DYNFLARE_NAMESERVER_%d_CREDENTIALS" }}
+              valueFrom:
+                secretKeyRef:
+                  {{- with $nameserver.credentialsSecretRef }}
+                  name: {{ .name }}
+                  key: {{ .key }}
+                  {{ end -}}
+            {{ end }}
+          args:
+            - /app/dynflare
+            - -config
+            - /etc/dynflare/config.toml
+            - -cache
+            - /tmp/cache.toml
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "dynflare.fullname" . }}-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
