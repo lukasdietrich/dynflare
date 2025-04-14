@@ -75,7 +75,7 @@ func (s *State) updateAddr(update netlink.AddrUpdate) bool {
 	oldValue, exists := s.addrMap[ipStr]
 
 	if update.NewAddr {
-		slog.Debug("add address event", slog.String("ip", ipStr))
+		slog.Debug("add address event", slog.String("ip", ipStr), slog.Any("update", update))
 
 		if !exists || oldValue.LinkIndex != addr.LinkIndex || !oldValue.IP.Equal(addr.IP) {
 			s.addrMap[ipStr] = addr

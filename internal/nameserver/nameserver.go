@@ -30,6 +30,8 @@ func New(cfg config.Nameserver) (Nameserver, error) {
 	switch cfg.Provider {
 	case "cloudflare":
 		return newCloudflare(cfg.Credentials.String())
+	case "noop":
+		return &noopNameserver{}, nil
 	default:
 		return nil, fmt.Errorf("unknown provider %q", cfg.Provider)
 	}
