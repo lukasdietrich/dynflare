@@ -11,6 +11,7 @@ import (
 type filter struct {
 	kind          nameserver.RecordKind
 	interfaceName string
+	prefix        net.IP
 	suffix        net.IP
 }
 
@@ -18,7 +19,8 @@ func newFilter(cfg config.Domain) *filter {
 	return &filter{
 		kind:          nameserver.RecordKind(cfg.Kind),
 		interfaceName: cfg.Interface.String(),
-		suffix:        net.ParseIP(cfg.Suffix.String()), // net.ParseIP already handles empty string
+		prefix:        net.ParseIP(cfg.Prefix.String()), // net.ParseIP already handles empty string
+		suffix:        net.ParseIP(cfg.Suffix.String()), // "
 	}
 }
 
@@ -28,6 +30,7 @@ func (f *filter) match(addr monitor.Addr) bool {
 	return isPublicIP(addr.IP) &&
 		f.matchKind(addr) &&
 		f.matchInterface(addr) &&
+		f.matchPrefix(addr) &&
 		f.matchSuffix(addr)
 }
 
@@ -57,6 +60,28 @@ func (f *filter) matchKind(addr monitor.Addr) bool {
 
 func (f *filter) matchInterface(addr monitor.Addr) bool {
 	return f.interfaceName == "" || f.interfaceName == addr.LinkName
+}
+
+func (f *filter) matchPrefix(addr monitor.Addr) bool {
+	if f.prefix != nil {
+		var (
+			prefix = f.prefix
+			mask   = addr.Mask
+			ip     = addr.IP
+		)
+
+		for i, maskByte := range mask {
+			// mask   = 11111100
+			// suffix = ......10
+			// ip     = 10110110
+
+			if prefix[i]^ip[i]&maskByte != 0 {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func (f *filter) matchSuffix(addr monitor.Addr) bool {

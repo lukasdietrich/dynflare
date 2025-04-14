@@ -60,6 +60,9 @@ type Domain struct {
 	Kind EnvString `toml:"kind"`
 	// Interface is an optional filter for the network interface (eg. wlan0 or eth0).
 	Interface EnvString `toml:"interface"`
+	// Prefix is an optional filter for the network mask
+	// (eg. the first 64 bits of a ::/64 address).
+	Prefix EnvString `toml:"prefix"`
 	// Suffix is an optional filter for the part after the network mask
 	// (eg. the remaining 64 bits of a ::/64 address).
 	Suffix EnvString `toml:"suffix"`
