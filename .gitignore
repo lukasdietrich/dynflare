@@ -11,7 +11,7 @@
 !go.sum
 !*.go
 
-!Dockerfile
+!Containerfile
 !docker-compose.yml
 
 !packaging/**/*.spec
