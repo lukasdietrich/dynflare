@@ -26,7 +26,7 @@ jobs:
           sudo apt install musl-dev musl-tools
 
           go build -o dynflare -v ./cmd/dynflare
-          CGO_ENABLED=1 CC=musl-gcc go build --ldflags '-linkmode=external -extldflags=-static' -o dynflare.musl -v /cmd/dynflare
+          CGO_ENABLED=1 CC=musl-gcc go build --ldflags '-linkmode=external -extldflags=-static' -o dynflare.musl -v ./cmd/dynflare
 
       - name: Sha256sum
         run: |
