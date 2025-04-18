@@ -26,6 +26,7 @@ jobs:
 
       - name: Sha256sum
         run: |
+          sudo apt install sha256sum
           sha256sum dynflare > dynflare.sha256sum
           sha256sum --check *.sha256sum
 
