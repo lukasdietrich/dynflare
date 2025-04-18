@@ -6,6 +6,7 @@ import (
 
 	"github.com/lukasdietrich/dynflare/internal/cache"
 	"github.com/lukasdietrich/dynflare/internal/config"
+	"github.com/lukasdietrich/dynflare/internal/hook"
 	"github.com/lukasdietrich/dynflare/internal/monitor"
 	"github.com/lukasdietrich/dynflare/internal/nameserver"
 )
@@ -93,6 +94,7 @@ func createDomainUpdaters(cfg config.Config) ([]*domainUpdater, error) {
 
 		domainSlice[i] = &domainUpdater{
 			nameserver: nameserverMap[c.Zone.String()],
+			postUp:     hook.New(c.PostUp),
 			filter:     filter,
 			zoneName:   c.Zone.String(),
 			domainName: c.Name.String(),

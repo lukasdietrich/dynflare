@@ -31,3 +31,9 @@
     HasSuffix("::1234:1234:1234:1234") and
     not HasFlag("deprecated")
   """
+
+[[domain.post-up]]
+  cmd = "/usr/bin/sh"
+  args = [
+    "/usr/local/bin/my-custom-script.sh"
+  ]

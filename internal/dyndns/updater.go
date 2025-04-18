@@ -8,12 +8,14 @@ import (
 	"strings"
 
 	"github.com/lukasdietrich/dynflare/internal/cache"
+	"github.com/lukasdietrich/dynflare/internal/hook"
 	"github.com/lukasdietrich/dynflare/internal/monitor"
 	"github.com/lukasdietrich/dynflare/internal/nameserver"
 )
 
 type domainUpdater struct {
 	nameserver nameserver.Nameserver
+	postUp     *hook.Hook
 	filter     *filter
 	zoneName   string
 	domainName string
@@ -81,7 +83,11 @@ func (d *domainUpdater) updateRecord(addr *monitor.Addr) error {
 		IP:     addr.IP,
 	}
 
-	return d.nameserver.UpdateRecord(record)
+	if err := d.nameserver.UpdateRecord(record); err != nil {
+		return err
+	}
+
+	return d.postUp.Execute(record)
 }
 
 func (d *domainUpdater) checkCache(cache *cache.Cache, addr *monitor.Addr) bool {

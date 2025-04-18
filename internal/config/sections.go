@@ -1,30 +1,35 @@
 package config
 
 import (
-	"encoding"
 	"fmt"
 	"os"
+	"strings"
 )
 
 var (
-	_ encoding.TextUnmarshaler = (*EnvString)(nil)
-	_ fmt.Stringer             = EnvString("")
+	_ fmt.Stringer = EnvString("")
 )
 
 // EnvString is a string that may contain environmental variables `${env}` or `$env`.
 type EnvString string
 
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (e *EnvString) UnmarshalText(b []byte) error {
-	s := os.ExpandEnv(string(b))
-	*e = EnvString(s)
+// StringWith expands the environmental variables using the current process variables and
+// all additionally supplied variables.
+func (e EnvString) StringWith(environment []string) string {
+	return os.Expand(string(e), func(key string) string {
+		for i := len(environment) - 1; i >= 0; i-- {
+			if variable := environment[i]; strings.HasPrefix(variable, key+"=") {
+				return variable[len(key)+1:]
+			}
+		}
 
-	return nil
+		return os.Getenv(key)
+	})
 }
 
-// String implements fmt.Stringer.
+// String expands the environmental variables using the current process variables.
 func (e EnvString) String() string {
-	return string(e)
+	return e.StringWith(nil)
 }
 
 type Log struct {
@@ -59,4 +64,10 @@ type Domain struct {
 	// Filter is an expression (https://expr-lang.org/docs/language-definition) to
 	// select potential ip candidates.
 	Filter EnvString `toml:"filter" expr:"-"`
+	PostUp Hook      `toml:"post-up"`
+}
+
+type Hook struct {
+	Command EnvString   `toml:"cmd"`
+	Args    []EnvString `toml:"args"`
 }
