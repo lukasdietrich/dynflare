@@ -22,12 +22,12 @@ jobs:
           go-version: '1.24'
 
       - name: Build
-        run: go build -v ./...
+        run: go build -o . -v ./...
 
       - name: Sha256sum
         run: |
           ls -la
-          sha256sum ./dynflare > dynflare.sha256sum
+          sha256sum dynflare > dynflare.sha256sum
           sha256sum --check *.sha256sum
 
       - name: Release
