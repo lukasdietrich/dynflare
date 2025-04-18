@@ -26,8 +26,8 @@ jobs:
 
       - name: Sha256sum
         run: |
-          sudo apt install coreutils
-          sha256sum dynflare > dynflare.sha256sum
+          ls -la
+          sha256sum ./dynflare > dynflare.sha256sum
           sha256sum --check *.sha256sum
 
       - name: Release
