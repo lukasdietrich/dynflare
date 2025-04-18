@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Sha256sum
+        run: |
+          sha256sum dynflare > dynflare.sha256sum
+          sha256sum --check *.sha256sum
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            LICENSE
+            dynflare
+            dynflare.sha256sum
+
