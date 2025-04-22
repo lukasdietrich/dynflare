@@ -48,10 +48,11 @@ func (c *cloudflareNameserver) lookupZone(zoneName string) (string, error) {
 	return zoneId, nil
 }
 
-func (c *cloudflareNameserver) lookupRecord(resource *cloudflare.ResourceContainer, domainName string, kind RecordKind) (*cloudflare.DNSRecord, error) {
+func (c *cloudflareNameserver) lookupRecord(resource *cloudflare.ResourceContainer, record Record) (*cloudflare.DNSRecord, error) {
 	filter := cloudflare.ListDNSRecordsParams{
-		Type: string(kind),
-		Name: domainName,
+		Type:    string(record.Kind),
+		Name:    record.Domain,
+		Comment: record.Comment,
 	}
 
 	records, _, err := c.client.ListDNSRecords(context.Background(), resource, filter)
@@ -87,7 +88,7 @@ func (c *cloudflareNameserver) updateRecord(record Record) error {
 
 	resource := cloudflare.ZoneIdentifier(zoneId)
 
-	dnsRecord, err := c.lookupRecord(resource, record.Domain, record.Kind)
+	dnsRecord, err := c.lookupRecord(resource, record)
 	if err != nil {
 		return err
 	}
@@ -111,6 +112,7 @@ func (c *cloudflareNameserver) updateExistingRecord(resource *cloudflare.Resourc
 	updateRecordParams := cloudflare.UpdateDNSRecordParams{
 		ID:      oldDnsRecord.ID,
 		Content: record.IP.String(),
+		Comment: &record.Comment,
 	}
 
 	newDnsRecord, err := c.client.UpdateDNSRecord(context.Background(), resource, updateRecordParams)
@@ -130,6 +132,7 @@ func (c *cloudflareNameserver) createNewRecord(resource *cloudflare.ResourceCont
 		Type:    string(record.Kind),
 		Name:    record.Domain,
 		Content: record.IP.String(),
+		Comment: record.Comment,
 	}
 
 	newDnsRecord, err := c.client.CreateDNSRecord(context.Background(), resource, createRecordParams)

@@ -19,6 +19,7 @@ type domainUpdater struct {
 	filter     *filter
 	zoneName   string
 	domainName string
+	comment    string
 	disabled   bool
 }
 
@@ -77,10 +78,11 @@ func (d *domainUpdater) filterCandidate(addrSlice []monitor.Addr) *monitor.Addr 
 
 func (d *domainUpdater) updateRecord(addr *monitor.Addr) error {
 	record := nameserver.Record{
-		Zone:   d.zoneName,
-		Domain: d.domainName,
-		Kind:   determineIPKind(addr),
-		IP:     addr.IP,
+		Zone:    d.zoneName,
+		Domain:  d.domainName,
+		Kind:    determineIPKind(addr),
+		IP:      addr.IP,
+		Comment: d.comment,
 	}
 
 	if err := d.nameserver.UpdateRecord(record); err != nil {

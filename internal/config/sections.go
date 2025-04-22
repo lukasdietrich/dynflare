@@ -64,7 +64,11 @@ type Domain struct {
 	// Filter is an expression (https://expr-lang.org/docs/language-definition) to
 	// select potential ip candidates.
 	Filter EnvString `toml:"filter" expr:"-"`
-	PostUp Hook      `toml:"post-up"`
+	// Comment is optionally used to identify the dns record. This way multiple instances can update
+	// records for the same domain name.
+	Comment EnvString `toml:"comment"`
+	// PostHook is a program to execute after an update.
+	PostUp Hook `toml:"post-up"`
 }
 
 type Hook struct {

@@ -98,6 +98,7 @@ func createDomainUpdaters(cfg config.Config) ([]*domainUpdater, error) {
 			filter:     filter,
 			zoneName:   c.Zone.String(),
 			domainName: c.Name.String(),
+			comment:    c.Comment.String(),
 		}
 	}
 

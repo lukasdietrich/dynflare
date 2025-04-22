@@ -16,10 +16,11 @@ const (
 )
 
 type Record struct {
-	Zone   string
-	Domain string
-	Kind   RecordKind
-	IP     net.IP
+	Zone    string
+	Domain  string
+	Kind    RecordKind
+	IP      net.IP
+	Comment string
 }
 
 type Nameserver interface {
