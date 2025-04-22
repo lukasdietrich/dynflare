@@ -48,7 +48,7 @@ func (u *UpdateManager) updateDomains(addrSlice []monitor.Addr) {
 				slog.String("domain", updater.domainName))
 
 			if nameserver.IsPermanentClientError(err) {
-				slog.Info("update failed with a permanent client error. disabling updater for this domain to prevent flooding",
+				slog.Warn("update failed with a permanent client error. disabling updater for this domain to prevent flooding",
 					slog.String("domain", updater.domainName))
 
 				updater.disabled = true

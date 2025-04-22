@@ -38,11 +38,10 @@ func (d *domainUpdater) update(cache *cache.Cache, notifier *notifier, addrSlice
 				slog.String("domain", d.domainName),
 				slog.Any("ip", addr.IP))
 
-			if err := d.updateRecord(addr); err != nil {
+			if err := d.updateRecord(notifier, addr); err != nil {
 				return err
 			}
 
-			go notifier.notify("The dns record of %q has been updated to %q.", d.domainName, addr.IP)
 			d.updateCache(cache, addr)
 		} else {
 			slog.Debug("candidate matches cache. skip update.",
@@ -76,7 +75,7 @@ func (d *domainUpdater) filterCandidate(addrSlice []monitor.Addr) *monitor.Addr 
 	return nil
 }
 
-func (d *domainUpdater) updateRecord(addr *monitor.Addr) error {
+func (d *domainUpdater) updateRecord(notifier *notifier, addr *monitor.Addr) error {
 	record := nameserver.Record{
 		Zone:    d.zoneName,
 		Domain:  d.domainName,
@@ -85,11 +84,23 @@ func (d *domainUpdater) updateRecord(addr *monitor.Addr) error {
 		Comment: d.comment,
 	}
 
-	if err := d.nameserver.UpdateRecord(record); err != nil {
+	changed, err := d.nameserver.UpdateRecord(record)
+	if err != nil {
 		return err
 	}
 
-	return d.postUp.Execute(record)
+	if changed {
+		go notifier.notify("The dns record of %q has been updated to %q.", d.domainName, addr.IP)
+		go d.callHook(record)
+	}
+
+	return nil
+}
+
+func (d *domainUpdater) callHook(record nameserver.Record) {
+	if err := d.postUp.Execute(record); err != nil {
+		slog.Warn("error calling post-up hook", slog.Any("err", err))
+	}
 }
 
 func (d *domainUpdater) checkCache(cache *cache.Cache, addr *monitor.Addr) bool {

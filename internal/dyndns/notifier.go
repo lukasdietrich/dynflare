@@ -33,7 +33,7 @@ func newNotifier(cfg config.Config) (*notifier, error) {
 	return &notifier{router}, nil
 }
 
-func (n *notifier) notify(format string, v ...interface{}) {
+func (n *notifier) notify(format string, v ...any) {
 	if n == nil {
 		slog.Debug("no notification urls configured")
 		return

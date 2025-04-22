@@ -24,7 +24,8 @@ type Record struct {
 }
 
 type Nameserver interface {
-	UpdateRecord(record Record) error
+	// UpdateRecord tries to update a dns record. Returns true if there was an actual change.
+	UpdateRecord(record Record) (bool, error)
 }
 
 func New(cfg config.Nameserver) (Nameserver, error) {

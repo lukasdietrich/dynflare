@@ -8,7 +8,7 @@ var (
 
 type noopNameserver struct{}
 
-func (*noopNameserver) UpdateRecord(record Record) error {
+func (*noopNameserver) UpdateRecord(record Record) (bool, error) {
 	slog.Warn("noop nameserver configured for record", slog.Any("record", record))
-	return nil
+	return false, nil
 }

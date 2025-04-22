@@ -67,46 +67,54 @@ func (c *cloudflareNameserver) lookupRecord(resource *cloudflare.ResourceContain
 	return nil, nil
 }
 
-func (c *cloudflareNameserver) UpdateRecord(record Record) error {
-	err := c.updateRecord(record)
+func (c *cloudflareNameserver) UpdateRecord(record Record) (bool, error) {
+	changed, err := c.updateRecord(record)
 
 	if err != nil {
 		var apiError *cloudflare.Error
 		if errors.As(err, &apiError) && apiError.ClientError() {
-			return wrapPermanentClientError(err)
+			return false, wrapPermanentClientError(err)
 		}
 	}
 
-	return err
+	return changed, err
 }
 
-func (c *cloudflareNameserver) updateRecord(record Record) error {
+func (c *cloudflareNameserver) updateRecord(record Record) (bool, error) {
 	zoneId, err := c.lookupZone(record.Zone)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	resource := cloudflare.ZoneIdentifier(zoneId)
 
 	dnsRecord, err := c.lookupRecord(resource, record)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if dnsRecord != nil {
 		return c.updateExistingRecord(resource, record, dnsRecord)
 	}
 
-	return c.createNewRecord(resource, record)
+	if err := c.createNewRecord(resource, record); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
-func (c *cloudflareNameserver) updateExistingRecord(resource *cloudflare.ResourceContainer, record Record, oldDnsRecord *cloudflare.DNSRecord) error {
+func (c *cloudflareNameserver) updateExistingRecord(
+	resource *cloudflare.ResourceContainer,
+	record Record,
+	oldDnsRecord *cloudflare.DNSRecord,
+) (bool, error) {
 	if record.IP.String() == oldDnsRecord.Content {
 		slog.Debug("record already up to date",
 			slog.String("id", oldDnsRecord.ID),
 			slog.String("content", oldDnsRecord.Content))
 
-		return nil
+		return false, nil
 	}
 
 	updateRecordParams := cloudflare.UpdateDNSRecordParams{
@@ -117,14 +125,14 @@ func (c *cloudflareNameserver) updateExistingRecord(resource *cloudflare.Resourc
 
 	newDnsRecord, err := c.client.UpdateDNSRecord(context.Background(), resource, updateRecordParams)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	slog.Debug("updating record",
 		slog.String("id", newDnsRecord.ID),
 		slog.String("content", newDnsRecord.Content))
 
-	return nil
+	return true, nil
 }
 
 func (c *cloudflareNameserver) createNewRecord(resource *cloudflare.ResourceContainer, record Record) error {
