@@ -34,9 +34,9 @@ data:
     [[domain]]
     name = {{ $domain.name | quote }}
     zone = {{ $domain.zone | quote }}
-    {{- if $domain.comment }}
+    {{ if $domain.comment }}
     comment = {{ $domain.comment | quote }}
-    {{ end -}}
+    {{ end }}
     filter = """
     {{- .filter | nindent 6 -}}
     """
