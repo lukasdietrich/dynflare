@@ -92,5 +92,6 @@ dynflare:
   domain:
     # - name: ${K8S_NODE_NAME}.example.com
     #   zone: example.com
+    #   comment: Managed-By: ${K8S_NODE_NAME}
     #   filter: |
     #     IsV6()
