@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  github-release:
     runs-on: ubuntu-latest
 
     steps:
@@ -45,3 +45,61 @@ jobs:
             dynflare.musl
             dynflare.musl.sha256sum
 
+  container:
+    name: Publish container image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Container Tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/lukasdietrich/dynflare
+          tags: |
+            type=edge
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}
+            type=sha
+
+      - uses: redhat-actions/buildah-build@v2
+        id: build-image
+        with:
+          tags: ${{ steps.meta.outputs.tags }}
+          containerfiles: |
+            ./Containerfile
+
+      - uses: redhat-actions/push-to-registry@v2
+        with:
+          tags: ${{ steps.build-image.outputs.tags }}
+          registry: ghcr.io/${{ github.repository_owner }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+  helm:
+    name: Publish helm chart
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Push chart
+        run: |
+          cd packaging/helm/charts
+          helm package "dynflare-helm" --version "${{ github.ref_name }}" --app-version "${{ github.ref_name }}"
+          helm push "dynflare-helm-${{ github.ref_name }}.tgz" "oci://ghcr.io/${{ github.actor }}"

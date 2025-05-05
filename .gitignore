@@ -16,4 +16,6 @@
 
 !packaging/**/*.spec
 !packaging/**/*.service
-!packaging/helm/**
+!packaging/helm/**/*.tpl
+!packaging/helm/**/*.yaml
+!packaging/helm/**/.helmignore
