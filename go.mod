@@ -8,7 +8,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/cloudflare/cloudflare-go v0.115.0
 	github.com/containrrr/shoutrrr v0.8.0
-	github.com/expr-lang/expr v1.17.3
+	github.com/expr-lang/expr v1.17.4
 	github.com/vishvananda/netlink v1.3.1
 	golang.org/x/sys v0.33.0
 )
