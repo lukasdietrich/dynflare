@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.2
 
 require (
-	github.com/BurntSushi/toml v1.5.0
+	github.com/BurntSushi/toml v1.6.0
 	github.com/cloudflare/cloudflare-go v0.116.0
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/expr-lang/expr v1.17.7
