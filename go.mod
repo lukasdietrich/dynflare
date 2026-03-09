@@ -1,8 +1,6 @@
 module github.com/lukasdietrich/dynflare
 
-go 1.24.0
-
-toolchain go1.24.2
+go 1.25.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
@@ -10,7 +8,7 @@ require (
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/expr-lang/expr v1.17.8
 	github.com/vishvananda/netlink v1.3.1
-	golang.org/x/sys v0.41.0
+	golang.org/x/sys v0.42.0
 )
 
 require (
