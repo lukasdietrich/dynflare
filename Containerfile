@@ -1,4 +1,4 @@
-from docker.io/library/golang:alpine as builder
+from docker.io/library/golang:1.25.8-alpine as builder
 
 	workdir /github.com/lukasdietrich/dynflare
 	copy internal ./internal
@@ -8,7 +8,7 @@ from docker.io/library/golang:alpine as builder
 	run ls -l
 	run go build -v ./cmd/dynflare
 
-from docker.io/library/alpine
+from docker.io/library/alpine:3.23.3
 
 	workdir /app
 	copy --from=builder /github.com/lukasdietrich/dynflare/dynflare .
