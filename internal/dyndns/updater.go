@@ -1,6 +1,7 @@
 package dyndns
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net"
@@ -84,7 +85,7 @@ func (d *domainUpdater) updateRecord(notifier *notifier, addr *monitor.Addr) err
 		Comment: d.comment,
 	}
 
-	changed, err := d.nameserver.UpdateRecord(record)
+	changed, err := d.nameserver.UpdateRecord(context.Background(), record)
 	if err != nil {
 		return err
 	}
