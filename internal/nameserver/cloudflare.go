@@ -7,26 +7,25 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/cloudflare/cloudflare-go"
+	"github.com/cloudflare/cloudflare-go/v6"
+	"github.com/cloudflare/cloudflare-go/v6/dns"
+	"github.com/cloudflare/cloudflare-go/v6/option"
+	"github.com/cloudflare/cloudflare-go/v6/zones"
 )
 
 type cloudflareNameserver struct {
-	client *cloudflare.API
+	client *cloudflare.Client
 
 	zoneLock  sync.Mutex
 	zoneCache map[string]string // zoneName -> zoneId
 }
 
-func newCloudflare(token string) (Nameserver, error) {
-	client, err := cloudflare.NewWithAPIToken(token)
-	if err != nil {
-		return nil, err
-	}
-
-	return &cloudflareNameserver{client: client}, nil
+func newCloudflare(token string) Nameserver {
+	client := cloudflare.NewClient(option.WithAPIToken(token))
+	return &cloudflareNameserver{client: client}
 }
 
-func (c *cloudflareNameserver) lookupZone(zoneName string) (string, error) {
+func (c *cloudflareNameserver) lookupZone(ctx context.Context, zoneName string) (string, error) {
 	c.zoneLock.Lock()
 	defer c.zoneLock.Unlock()
 
@@ -39,40 +38,63 @@ func (c *cloudflareNameserver) lookupZone(zoneName string) (string, error) {
 		return zoneId, nil
 	}
 
-	zoneId, err := c.client.ZoneIDByName(zoneName)
+	filter := zones.ZoneListParams{
+		Match: cloudflare.F(zones.ZoneListParamsMatchAll),
+		Name:  cloudflare.F(zoneName),
+	}
+
+	zonePagination, err := c.client.Zones.List(ctx, filter)
 	if err != nil {
 		return zoneId, fmt.Errorf("could not lookup zone: %w", err)
 	}
 
+	if len(zonePagination.Result) != 1 {
+		return zoneId, fmt.Errorf("got %d zones for name %q", len(zonePagination.Result), zoneName)
+	}
+
+	zoneId = zonePagination.Result[0].ID
 	c.zoneCache[zoneName] = zoneId
 	return zoneId, nil
 }
 
-func (c *cloudflareNameserver) lookupRecord(resource *cloudflare.ResourceContainer, record Record) (*cloudflare.DNSRecord, error) {
-	filter := cloudflare.ListDNSRecordsParams{
-		Type:    string(record.Kind),
-		Name:    record.Domain,
-		Comment: record.Comment,
+func (c *cloudflareNameserver) lookupRecord(ctx context.Context, zoneId string, record Record) (*dns.RecordResponse, error) {
+	filter := dns.RecordListParams{
+		Match:  cloudflare.F(dns.RecordListParamsMatchAll),
+		Type:   cloudflare.F(dns.RecordListParamsType(record.Kind)),
+		ZoneID: cloudflare.F(zoneId),
+		Name: cloudflare.F(dns.RecordListParamsName{
+			Exact: cloudflare.F(record.Domain),
+		}),
 	}
 
-	records, _, err := c.client.ListDNSRecords(context.Background(), resource, filter)
+	if record.Comment != "" {
+		filter.Comment = cloudflare.F(dns.RecordListParamsComment{
+			Exact: cloudflare.F(record.Comment),
+		})
+	}
+
+	recordPagination, err := c.client.DNS.Records.List(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("could not lookup records: %w", err)
 	}
 
-	if len(records) > 0 {
-		return &records[0], nil
+	if len(recordPagination.Result) > 1 {
+		return nil, fmt.Errorf("got %d records for name %q", len(recordPagination.Result), record.Domain)
 	}
 
-	return nil, nil
+	if len(recordPagination.Result) == 0 {
+		return nil, nil
+	}
+
+	return &recordPagination.Result[0], nil
 }
 
-func (c *cloudflareNameserver) UpdateRecord(record Record) (bool, error) {
-	changed, err := c.updateRecord(record)
+func (c *cloudflareNameserver) UpdateRecord(ctx context.Context, record Record) (bool, error) {
+	changed, err := c.updateRecord(ctx, record)
 
 	if err != nil {
 		var apiError *cloudflare.Error
-		if errors.As(err, &apiError) && apiError.ClientError() {
+		if errors.As(err, &apiError) && isClientError(apiError.StatusCode) {
 			return false, wrapPermanentClientError(err)
 		}
 	}
@@ -80,35 +102,33 @@ func (c *cloudflareNameserver) UpdateRecord(record Record) (bool, error) {
 	return changed, err
 }
 
-func (c *cloudflareNameserver) updateRecord(record Record) (bool, error) {
-	zoneId, err := c.lookupZone(record.Zone)
+func isClientError(status int) bool {
+	return status >= 400 && status < 500
+}
+
+func (c *cloudflareNameserver) updateRecord(ctx context.Context, record Record) (bool, error) {
+	zoneId, err := c.lookupZone(ctx, record.Zone)
 	if err != nil {
 		return false, err
 	}
 
-	resource := cloudflare.ZoneIdentifier(zoneId)
-
-	dnsRecord, err := c.lookupRecord(resource, record)
+	dnsRecord, err := c.lookupRecord(ctx, zoneId, record)
 	if err != nil {
 		return false, err
 	}
 
 	if dnsRecord != nil {
-		return c.updateExistingRecord(resource, record, dnsRecord)
+		return c.updateExistingRecord(ctx, zoneId, record, dnsRecord)
 	}
 
-	if err := c.createNewRecord(resource, record); err != nil {
+	if err := c.createNewRecord(ctx, zoneId, record); err != nil {
 		return false, err
 	}
 
 	return true, nil
 }
 
-func (c *cloudflareNameserver) updateExistingRecord(
-	resource *cloudflare.ResourceContainer,
-	record Record,
-	oldDnsRecord *cloudflare.DNSRecord,
-) (bool, error) {
+func (c *cloudflareNameserver) updateExistingRecord(ctx context.Context, zoneId string, record Record, oldDnsRecord *dns.RecordResponse) (bool, error) {
 	if record.IP.String() == oldDnsRecord.Content {
 		slog.Debug("record already up to date",
 			slog.String("id", oldDnsRecord.ID),
@@ -117,13 +137,17 @@ func (c *cloudflareNameserver) updateExistingRecord(
 		return false, nil
 	}
 
-	updateRecordParams := cloudflare.UpdateDNSRecordParams{
-		ID:      oldDnsRecord.ID,
-		Content: record.IP.String(),
-		Comment: &record.Comment,
+	updateRecordParams := dns.RecordUpdateParams{
+		ZoneID: cloudflare.F(zoneId),
+		Body: dns.RecordUpdateParamsBody{
+			Type:    cloudflare.F(dns.RecordUpdateParamsBodyType(record.Kind)),
+			Name:    cloudflare.F(record.Domain),
+			Comment: cloudflare.F(record.Comment),
+			Content: cloudflare.F(record.IP.String()),
+		},
 	}
 
-	newDnsRecord, err := c.client.UpdateDNSRecord(context.Background(), resource, updateRecordParams)
+	newDnsRecord, err := c.client.DNS.Records.Update(ctx, oldDnsRecord.ID, updateRecordParams)
 	if err != nil {
 		return false, err
 	}
@@ -135,22 +159,25 @@ func (c *cloudflareNameserver) updateExistingRecord(
 	return true, nil
 }
 
-func (c *cloudflareNameserver) createNewRecord(resource *cloudflare.ResourceContainer, record Record) error {
-	createRecordParams := cloudflare.CreateDNSRecordParams{
-		Type:    string(record.Kind),
-		Name:    record.Domain,
-		Content: record.IP.String(),
-		Comment: record.Comment,
+func (c *cloudflareNameserver) createNewRecord(ctx context.Context, zoneId string, record Record) error {
+	createRecordParams := dns.RecordNewParams{
+		ZoneID: cloudflare.F(zoneId),
+		Body: dns.RecordNewParamsBody{
+			Type:    cloudflare.F(dns.RecordNewParamsBodyType(record.Kind)),
+			Name:    cloudflare.F(record.Domain),
+			Comment: cloudflare.F(record.Comment),
+			Content: cloudflare.F(record.IP.String()),
+		},
 	}
 
-	newDnsRecord, err := c.client.CreateDNSRecord(context.Background(), resource, createRecordParams)
+	newDnsRecord, err := c.client.DNS.Records.New(ctx, createRecordParams)
 	if err != nil {
 		return err
 	}
 
 	slog.Debug("creating new record",
 		slog.String("domain", newDnsRecord.Name),
-		slog.String("type", newDnsRecord.Type),
+		slog.String("type", string(newDnsRecord.Type)),
 		slog.String("content", newDnsRecord.Content))
 
 	return nil

@@ -1,6 +1,7 @@
 package nameserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -25,13 +26,13 @@ type Record struct {
 
 type Nameserver interface {
 	// UpdateRecord tries to update a dns record. Returns true if there was an actual change.
-	UpdateRecord(record Record) (bool, error)
+	UpdateRecord(ctx context.Context, record Record) (bool, error)
 }
 
 func New(cfg config.Nameserver) (Nameserver, error) {
 	switch cfg.Provider {
 	case "cloudflare":
-		return newCloudflare(cfg.Credentials.String())
+		return newCloudflare(cfg.Credentials.String()), nil
 	case "noop":
 		return &noopNameserver{}, nil
 	default:
