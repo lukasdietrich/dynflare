@@ -8,7 +8,7 @@ from docker.io/library/golang:1.26.2-alpine as builder
 	run ls -l
 	run go build -v ./cmd/dynflare
 
-from docker.io/library/alpine:3.23.3
+from docker.io/library/alpine:3.23.4
 
 	workdir /app
 	copy --from=builder /github.com/lukasdietrich/dynflare/dynflare .
