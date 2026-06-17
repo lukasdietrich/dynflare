@@ -6,6 +6,8 @@ github.com/cloudflare/cloudflare-go/v7 v7.4.0 h1:JdTxzeXcAhtJ9rUkNISK4ABA55pZP8H
 github.com/cloudflare/cloudflare-go/v7 v7.4.0/go.mod h1:9zcoIAtu6cmcoPszCNISvqYMXs8wObtVGXE1qGFMrNU=
 github.com/cloudflare/cloudflare-go/v7 v7.5.0 h1:F3M12yYHBHOpbtYLccBwTdVF62LJUIDyLnW2WeMxjGo=
 github.com/cloudflare/cloudflare-go/v7 v7.5.0/go.mod h1:9zcoIAtu6cmcoPszCNISvqYMXs8wObtVGXE1qGFMrNU=
+github.com/cloudflare/cloudflare-go/v7 v7.6.0 h1:EdHSyuRxn4lvFU2MoqX0DS2daboghs4jWBT4HN5YgwM=
+github.com/cloudflare/cloudflare-go/v7 v7.6.0/go.mod h1:9zcoIAtu6cmcoPszCNISvqYMXs8wObtVGXE1qGFMrNU=
 github.com/containrrr/shoutrrr v0.8.0 h1:mfG2ATzIS7NR2Ec6XL+xyoHzN97H8WPjir8aYzJUSec=
 github.com/containrrr/shoutrrr v0.8.0/go.mod h1:ioyQAyu1LJY6sILuNyKaQaw+9Ttik5QePU8atnAdO2o=
 github.com/expr-lang/expr v1.17.8 h1:W1loDTT+0PQf5YteHSTpju2qfUfNoBt4yw9+wOEU9VM=
