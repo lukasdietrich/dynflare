@@ -68,7 +68,7 @@ jobs:
             type=semver,pattern=v{{major}}
             type=sha
 
-      - uses: redhat-actions/buildah-build@v2
+      - uses: redhat-actions/buildah-build@v3
         id: build-image
         with:
           tags: ${{ steps.meta.outputs.tags }}
