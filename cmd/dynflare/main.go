@@ -13,9 +13,8 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
-		slog.Error("a fatal error occurred. stopping dynflare.", slog.Any("err", err))
-	}
+	err := run()
+	slog.Error("a fatal error occurred. stopping dynflare.", slog.Any("err", err))
 }
 
 func run() error {
